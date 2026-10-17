@@ -10,7 +10,7 @@ window.CONFIG = {
   facebook: 'https://www.facebook.com/profile.php?id=61580476092952',
 
   // Your content lives in this Excel file inside the site (data folder). Edit it, upload it to GitHub, done.
-  contentFile: 'data/content.xlsx',
+  contentFile: 'content.xlsx',
 
   // FORM EMAILS (pick ONE, see SETUP-GUIDE.md part 2):
   // A) web3formsKey: free key from web3forms.com. Every form is emailed straight to you. Easiest. (2 minutes)
