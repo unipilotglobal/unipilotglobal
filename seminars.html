@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free seminars and video guides | UNIPILOT GLOBAL</title><meta name="description" content="Join free scholarship seminars and watch recordings and video guides on applications, SOPs and studying abroad."><meta property="og:title" content="Free seminars and video guides | UNIPILOT GLOBAL"><meta property="og:description" content="Join free scholarship seminars and watch recordings and video guides on applications, SOPs and studying abroad."><meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230A1A33'/%3E%3Cpath d='M8 17l12-6 12 6-12 6z' fill='%23E3A72F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Free seminars</span><h1>Learn from our free seminars</h1><p id="hl">We host free seminars on scholarships, applications and studying abroad.</p></div></section>
+<section class="sec"><div class="w"><h2>Upcoming seminars</h2><div class="three" id="up"></div></div></section>
+<section class="sec mist" id="pastS"><div class="w"><h2>Watch past seminars</h2><div class="three" id="past"></div></div></section>
+<section class="sec" id="vidS"><div class="w"><h2>Free video guides</h2><div class="three" id="vids"></div></div></section>
+<section class="band"><div class="w"><h2>Never miss a seminar</h2><p style="color:#b9c8df">Follow us to hear about the next free session first.</p><span id="follow"></span></div></section>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script>
+UP.boot('seminars', U => {
+  const { C, $, esc, D } = U, up = D.seminars.filter(s => s.up).sort((a, b) => a.date.localeCompare(b.date)), past = D.seminars.filter(s => !s.up).sort((a, b) => b.date.localeCompare(a.date));
+  if (U.seminarsHeld() > 0) $('#hl').textContent = 'We have hosted ' + U.seminarsHeld() + ' free seminars on scholarships, applications and studying abroad. Join the next one or watch the recordings.';
+  $('#up').innerHTML = up.length ? up.map(U.semCard).join('') : `<div class="box" style="grid-column:1/-1"><h3>The next seminar will be announced soon</h3><p class="mute">Follow us on Facebook or subscribe to deadline alerts to hear first.</p>${C.facebook ? `<a class="btn" href="${esc(C.facebook)}" target="_blank" rel="noopener">Follow on Facebook</a>` : ''}</div>`;
+  $('#pastS').hidden = !past.length; $('#past').innerHTML = past.map(U.semCard).join('');
+  $('#vidS').hidden = !D.videos.length; $('#vids').innerHTML = D.videos.map(U.videoCard).join('');
+  $('#follow').innerHTML = (C.facebook ? `<a class="btn" href="${esc(C.facebook)}" target="_blank" rel="noopener">Follow on Facebook</a> ` : '') + (C.youtubeChannel ? `<a class="btn out" href="${esc(C.youtubeChannel)}" target="_blank" rel="noopener">Subscribe on YouTube</a>` : '');
+});
+</script></body></html>

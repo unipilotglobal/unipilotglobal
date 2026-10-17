@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book a consultation | UNIPILOT GLOBAL</title><meta name="description" content="Tell us about your goals and book SOP review, CV review, a scholarship guideline or a one-to-one consultation."><meta property="og:title" content="Book a consultation | UNIPILOT GLOBAL"><meta property="og:description" content="Tell us about your goals and book SOP review, CV review, a scholarship guideline or a one-to-one consultation."><meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230A1A33'/%3E%3Cpath d='M8 17l12-6 12 6-12 6z' fill='%23E3A72F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<section class="sec"><div class="w" style="max-width:900px"><span class="eyebrow">Consultation</span><h1 style="font-size:clamp(2rem,4vw,3rem)">Tell us about your goals</h1><p class="lead">The more detail you share, the more specific our first reply will be. Fields marked * are required.</p><ul class="assure"><li>Your details stay private</li><li>Your request is emailed to our team instantly</li><li>You also get a confirmation copy</li></ul><p id="chat" class="mute"></p>
+<div class="box" id="expert" style="margin:26px 0"><h2 style="font-size:1.5rem">Explore opportunities with a field expert</h2><p class="mute">Choose your subject. We will match you with an advisor who knows the scholarships, supervisors and labs in your field.</p><div class="chips big" id="subjchips"></div><div class="three" id="experts" style="margin-top:18px"></div></div>
+<div id="out"></div><form class="box f" id="cf">
+<h2>1. About you</h2><div><label for="name">Full name *</label><input id="name" required autocomplete="name"></div><div><label for="email">Email *</label><input id="email" type="email" required autocomplete="email"></div>
+<div><label for="phone">WhatsApp or phone *</label><input id="phone" required autocomplete="tel"></div><div><label for="cit">Country of citizenship *</label><input id="cit" required></div><div><label for="age">Age</label><input id="age" type="number" min="14" max="80"></div>
+<h2>2. Academic profile</h2><div><label for="cur">Current education *</label><select id="cur"><option>High school</option><option>Bachelor's in progress</option><option>Bachelor's completed</option><option>Master's in progress</option><option>Master's completed</option><option>Working professional</option></select></div>
+<div><label for="gpa">GPA or grade *</label><input id="gpa" required placeholder="e.g. 3.6/4.0 or 78%"></div><div><label for="tests">English and other tests</label><input id="tests" placeholder="IELTS 6.5, GRE, none yet"></div><div><label for="intake">Intended start</label><input id="intake" placeholder="e.g. Fall 2027"></div>
+<h2>3. What you want to study</h2><div><label for="level">Degree you want *</label><select id="level"><option>Bachelor's</option><option>Master's</option><option>PhD</option><option>Internship</option></select></div><div><label for="region">Preferred continent</label><select id="region"><option>Not sure yet</option></select></div>
+<div><label for="subject">Subject area</label><select id="subject"><option>Not sure yet</option></select></div><div><label for="major">Specific field or major</label><input id="major" placeholder="e.g. Chemical engineering"></div>
+<h2>4. Funding and profile</h2><div><label for="fund">Funding you need</label><select id="fund"><option>Full funding (tuition and living costs)</option><option>Full tuition waiver</option><option>Partial funding is acceptable</option></select></div>
+<div class="w2 checks"><label style="display:block">Special circumstances (optional)</label><label><input type="checkbox" name="sp" value="First-generation student"> First-generation student</label><label><input type="checkbox" name="sp" value="Woman applicant"> Woman applicant</label><label><input type="checkbox" name="sp" value="Refugee or displaced"> Refugee or displaced</label><label><input type="checkbox" name="sp" value="University faculty or staff"> University faculty or staff</label><label><input type="checkbox" name="sp" value="Mid-career professional"> Mid-career professional</label></div>
+<h2>5. Your request</h2><div><label for="service">Service *</label><select id="service"></select></div><div><label for="sch">Scholarship you are interested in</label><input id="sch" placeholder="Optional"></div>
+<div class="w2"><label for="doc">Link to your SOP or CV (Google Drive, view access)</label><input id="doc" type="url" placeholder="Optional. Needed for SOP and CV reviews"></div>
+<div class="w2"><label for="msg">Anything else we should know?</label><textarea id="msg" rows="3"></textarea></div><input type="text" id="hp" style="display:none" tabindex="-1" autocomplete="off">
+<div class="w2"><label style="font-weight:500"><input type="checkbox" id="ok" required style="width:auto"> I agree that UNIPILOT GLOBAL may contact me about this request and store my details. <a href="privacy.html" target="_blank">Privacy</a></label></div>
+<div class="w2"><button class="btn lg" id="go" type="submit">Send my request</button></div></form></div></section>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script>
+let ready = false, chosen = '';
+UP.boot('', U => {
+  const { C, $, esc, D } = U, P = new URLSearchParams(location.search), svc = id => C.services.find(p => p.id === id);
+  const showExperts = f => { const m = D.experts.filter(e => e.field === f); $('#experts').innerHTML = (m.length ? m : D.experts).map(U.expertCard).join(''); };
+  $('#chat').innerHTML = U.wa() ? 'Prefer to chat? <a href="' + U.wa() + '" target="_blank" rel="noopener"><b>WhatsApp ' + esc(U.waDisplay()) + '</b></a>' : '';
+  $('#subjchips').innerHTML = U.SUBJECTS.map(s => `<button type="button" class="chip ${s === chosen ? 'on' : ''}" data-s="${esc(s)}">${esc(s)}</button>`).join(''); showExperts(chosen);
+  $('#subjchips').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; chosen = b.dataset.s; $('#subject').value = chosen; if (svc('expert')) $('#service').value = svc('expert').name; U.$$('#subjchips .chip').forEach(x => x.classList.toggle('on', x === b)); showExperts(chosen); $('#cf').scrollIntoView({ behavior: 'smooth' }); };
+  if (ready) return; ready = true;
+  U.REGIONS.forEach(r => $('#region').add(new Option(r[0], r[0]))); U.SUBJECTS.concat(['Any field']).forEach(s => $('#subject').add(new Option(s, s)));
+  C.services.forEach(p => $('#service').add(new Option(p.name + (p.price ? ' (' + p.price + ')' : ''), p.name)));
+  const o = D.opps.find(x => x.id === P.get('s')), sv = svc(P.get('service')), expert = P.get('expert') || '';
+  if (o) { $('#sch').value = o.name; $('#level').value = o.type === 'Internship' ? 'Internship' : ({ Bachelor: "Bachelor's", Master: "Master's", PhD: 'PhD' }[o.levels[0]] || "Master's"); $('#region').value = o.region; }
+  if (P.get('subject')) { chosen = P.get('subject'); $('#subject').value = chosen; U.$$('#subjchips .chip').forEach(x => x.classList.toggle('on', x.dataset.s === chosen)); showExperts(chosen); }
+  if (sv) $('#service').value = sv.name;
+  const DK = 'up_draft_cf', ids = ['name', 'email', 'phone', 'cit', 'age', 'gpa', 'tests', 'intake', 'major', 'sch', 'doc', 'msg'];
+  try { const d = JSON.parse(localStorage.getItem(DK) || '{}'); ids.forEach(i => { if (d[i] && !$('#' + i).value) $('#' + i).value = d[i]; }); } catch (e) { }
+  $('#cf').addEventListener('input', () => { try { const d = {}; ids.forEach(i => d[i] = $('#' + i).value); localStorage.setItem(DK, JSON.stringify(d)); } catch (e) { } });
+  $('#cf').onsubmit = async e => {
+    e.preventDefault(); if ($('#hp').value) return; const v = id => $('#' + id).value.trim(), sp = Array.from(document.querySelectorAll('[name=sp]:checked')).map(x => x.value).join(', ') || 'None';
+    const p = { action: 'request', website: '', Name: v('name'), Email: v('email'), Phone: v('phone'), Citizenship: v('cit'), Age: v('age'), 'Current education': v('cur'), GPA: v('gpa'), Tests: v('tests'), 'Intended start': v('intake'), 'Degree wanted': v('level'), Region: v('region'), Subject: v('subject'), Field: v('major'), 'Funding needed': v('fund'), 'Special circumstances': sp, Service: v('service'), Opportunity: v('sch'), 'Preferred expert': expert, 'Document link': v('doc'), Message: v('msg') };
+    const btn = $('#go'), out = $('#out'); out.innerHTML = ''; btn.disabled = true; btn.textContent = 'Sending...';
+    try { const j = await U.send(p); const w = U.wa('Hello, I just sent a consultation request. My name is ' + p.Name);
+      out.innerHTML = `<div class="msg ok"><b>Thank you, ${esc(p.Name)}. Your request is in.</b> Our team has received it and will reply to ${esc(p.Email)} soon.${j.unconfirmed ? ' If you do not get a confirmation email shortly, please message us on WhatsApp so we can double-check.' : ''}${w ? ` Want a faster chat? <a href="${w}" target="_blank" rel="noopener">Message us on WhatsApp</a>.` : ''}${P.get('debug') ? '<pre style="white-space:pre-wrap">' + esc((j.unconfirmed ? 'Delivered by the unconfirmed route. ' : 'Confirmed. ') + 'Earlier errors: ' + ((U.errs || []).join(' | ') || 'none')) + '</pre>' : ''}</div>`; e.target.reset(); try { localStorage.removeItem(DK); } catch (x) { }
+    } catch (err) { out.innerHTML = U.failBox(p, 'consultation request', err); }
+    btn.disabled = false; btn.textContent = 'Send my request'; out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+});
+</script></body></html>

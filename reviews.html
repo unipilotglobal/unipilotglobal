@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student stories and reviews | UNIPILOT GLOBAL</title><meta name="description" content="Read what students say about UNIPILOT GLOBAL and share your own experience."><meta property="og:title" content="Student stories and reviews | UNIPILOT GLOBAL"><meta property="og:description" content="Read what students say about UNIPILOT GLOBAL and share your own experience."><meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230A1A33'/%3E%3Cpath d='M8 17l12-6 12 6-12 6z' fill='%23E3A72F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Student stories</span><h1>What students say</h1><p>Real words from students we have guided. Used our service? We would love to hear from you.</p></div></section>
+<section class="sec"><div class="w"><div class="three" id="rl"></div><div class="box" id="empty" style="max-width:640px" hidden><h3>Be the first to share your experience</h3><p class="mute">Every review is read by our team before it appears here, so what you see is genuine.</p><a class="btn" href="#rf">Write a review</a></div></div></section>
+<section class="sec mist"><div class="w" style="max-width:820px"><h2>Share your experience</h2><p class="lead">Tell future students what it was like. We publish reviews after checking them. Your email is never shown.</p><div id="out"></div>
+<form class="box f" id="rf"><div><label for="name">Your name *</label><input id="name" required></div><div><label for="country">Country</label><input id="country"></div><div><label for="email">Email (private) *</label><input id="email" type="email" required></div>
+<div><label id="rl_l">Your rating *</label><div class="starin" role="radiogroup" aria-labelledby="rl_l"><input type="radio" name="rt" id="rt5" value="5" checked><label for="rt5" title="5 out of 5">&#9733;</label><input type="radio" name="rt" id="rt4" value="4"><label for="rt4" title="4 out of 5">&#9733;</label><input type="radio" name="rt" id="rt3" value="3"><label for="rt3" title="3 out of 5">&#9733;</label><input type="radio" name="rt" id="rt2" value="2"><label for="rt2" title="2 out of 5">&#9733;</label><input type="radio" name="rt" id="rt1" value="1"><label for="rt1" title="1 out of 5">&#9733;</label></div></div>
+<div class="w2"><label for="res">What did you use or achieve?</label><input id="res" placeholder="e.g. SOP review, DAAD scholarship, consultation"></div>
+<div class="w2"><label for="rev">Your review *</label><textarea id="rev" rows="4" required></textarea></div><input type="text" id="hp" style="display:none" tabindex="-1" autocomplete="off">
+<div class="w2"><label style="font-weight:500"><input type="checkbox" id="ok" required style="width:auto"> I agree that my name, country and review may be shown on the website.</label></div><div class="w2"><button class="btn" id="go" type="submit">Submit my review</button></div></form></div></section>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script>
+let ready = false;
+UP.boot('reviews', U => {
+  const { C, $, esc, D } = U; $('#rl').innerHTML = D.reviews.map(U.reviewCard).join(''); $('#empty').hidden = D.reviews.length > 0;
+  if (ready) return; ready = true;
+  $('#rf').onsubmit = async e => {
+    e.preventDefault(); if ($('#hp').value) return; const v = id => $('#' + id).value.trim(), out = $('#out'), btn = $('#go'), label = btn.textContent;
+    const p = { action: 'review', website: '', Name: v('name'), Country: v('country'), Email: v('email'), Rating: (($('[name=rt]:checked')) || {}).value || '5', Result: v('res'), Review: v('rev') };
+    btn.disabled = true; btn.textContent = 'Sending...';
+    try { await U.send(p); out.innerHTML = '<div class="msg ok"><b>Thank you, ' + esc(p.Name) + '!</b> Your review has been received. We will publish it after a quick check.</div>'; e.target.reset(); } catch (err) { out.innerHTML = U.failBox(p, 'my review', err); }
+    btn.disabled = false; btn.textContent = label; out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+});
+</script></body></html>

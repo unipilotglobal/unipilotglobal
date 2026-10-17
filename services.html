@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Services: SOP review, CV review and scholarship guidelines | UNIPILOT GLOBAL</title><meta name="description" content="Expert SOP and CV review, research proposal feedback, scholarship guidelines, consultations and full application support."><meta property="og:title" content="Services: SOP review, CV review and scholarship guidelines | UNIPILOT GLOBAL"><meta property="og:description" content="Expert SOP and CV review, research proposal feedback, scholarship guidelines, consultations and full application support."><meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='11' fill='%230A1A33'/%3E%3Cpath d='M8 17l12-6 12 6-12 6z' fill='%23E3A72F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Services</span><h1>Expert help where applications are won</h1><p>Strong documents and a clear plan make the difference. Choose a single service or work with us from shortlist to submission.</p></div></section>
+<section class="sec"><div class="w"><div class="three" id="pk"></div></div></section>
+<section class="sec mist"><div class="w two"><div><span class="eyebrow">SOP and CV review</span><h2>How a review works</h2><p class="lead">Our most requested services. You send your draft, we give you clear, practical feedback.</p></div>
+<div class="steps" style="margin:0;grid-template-columns:1fr"><div class="step"><h3>Send your draft</h3><p class="mute">Share your SOP or CV with the scholarship you are targeting.</p></div><div class="step"><h3>Get detailed feedback</h3><p class="mute">We check structure, clarity, evidence of impact and fit with the selection criteria.</p></div><div class="step"><h3>Improve and finalise</h3><p class="mute">You revise with our guidance until it is ready to submit.</p></div></div></div></section>
+<section class="sec"><div class="w"><span class="eyebrow">Why students choose us</span><h2>Built on experience, backed by a community</h2><div class="three" id="why"></div></div></section>
+<section class="sec mist" id="faq"><div class="w" style="max-width:820px"><h2>Frequently asked questions</h2>
+<details class="q"><summary>Can you guarantee a scholarship?</summary><p>No one honestly can. Selection is made by the scholarship provider. We help you apply where you are eligible and present your strengths clearly.</p></details>
+<details class="q"><summary>Are deadlines and amounts current?</summary><p>They reflect typical annual cycles and change from year to year. Confirm every detail on the official page before you apply.</p></details>
+<details class="q"><summary>I do not know my target country yet.</summary><p>That is fine. Book a consultation and we will help you narrow it down.</p></details>
+<details class="q"><summary>How do I pay for a service?</summary><p>Send your request through the form. We will confirm the price and payment method by email or WhatsApp.</p></details></div></section>
+<section class="band"><div class="w"><h2>Ready to strengthen your application?</h2><a class="btn" href="consultation.html">Book a consultation</a></div></section>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script>
+UP.boot('services', U => {
+  const { C, $, esc } = U, s = U.students();
+  $('#pk').innerHTML = C.services.map((p, i) => `<div class="box svc ${i < 2 ? '' : ''}">${U.icon(p.icon)}<h3>${esc(p.name)}</h3><p class="mute">${esc(p.desc)}</p><div style="margin-top:auto"><details class="pr"><summary>See pricing</summary><p>${p.price ? 'Price: <b>' + esc(p.price) + '</b>' : 'Tell us what you need and we will send a personal quote.'}</p></details><a class="btn ${i < 2 ? '' : 'out'}" style="margin-top:12px" href="${p.id === 'guideline' ? 'scholarships.html' : 'consultation.html?service=' + p.id}">${p.id === 'guideline' ? 'Choose a scholarship' : 'Get started'}</a></div></div>`).join('');
+  $('#why').innerHTML = `<div class="box"><h3>${U.fmtN(s.n)}${s.plus ? '+' : ''} students</h3><p class="mute" style="margin:0">have used our guidance and support.</p></div><div class="box"><h3>Free seminars</h3><p class="mute" style="margin:0">We teach openly, with seminars and video guides anyone can join.</p></div><div class="box"><h3>${C.yearsExperience ? C.yearsExperience + ' years of experience' : 'Hands-on experience'}</h3><p class="mute" style="margin:0">Advisors who know what scholarship committees look for.</p></div>`;
+});
+</script></body></html>
