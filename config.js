@@ -10,6 +10,8 @@ window.CONFIG = {
   facebook: 'https://www.facebook.com/profile.php?id=61580476092952',
 
   // Your content lives in this Excel file inside the site (data folder). Edit it, upload it to GitHub, done.
+  // LIVE EDITING: paste your Google Sheet ID here (the long text between /d/ and /edit in the sheet address). Empty = use the Excel file below.
+  sheetId: '',
   contentFile: 'content.xlsx',
 
   // FORM EMAILS (pick ONE, see SETUP-GUIDE.md part 2):
@@ -60,12 +62,13 @@ window.CONFIG = {
 
   // Menu. To add a page, add a line here.
   nav: [
-    { id: 'home',     label: 'Home',            href: 'index.html' },
-    { id: 'find',     label: 'Scholarships',    href: 'scholarships.html' },
-    { id: 'visa',     label: 'Visa & Travel',   href: 'visa.html' },
-    { id: 'services', label: 'Services',        href: 'services.html' },
-    { id: 'seminars', label: 'Free Seminars',   href: 'seminars.html' },
-    { id: 'reviews',  label: 'Student Stories', href: 'reviews.html' },
-    { id: 'news',     label: 'News & Deadlines', href: 'news.html' }
+    { id: 'home',      label: 'Home',          href: 'index.html' },
+    { id: 'find',      label: 'Scholarships',  href: 'scholarships.html' },
+    { id: 'materials', label: 'Free Materials', href: 'materials.html' },
+    { id: 'seminars',  label: 'Seminars',      href: 'seminars.html' },
+    { id: 'visa',      label: 'Visa',          href: 'visa.html' },
+    { id: 'services',  label: 'Services',      href: 'services.html' },
+    { id: 'reviews',   label: 'Stories',       href: 'reviews.html' },
+    { id: 'news',      label: 'News',          href: 'news.html' }
   ]
 };

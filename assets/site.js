@@ -62,7 +62,8 @@
     const reviews = (p.reviews || BASE.reviews || []).filter(r => r.Review && /^y/i.test(String(r.Approved || ''))).map(r => ({ name: r.Name || 'Student', country: r.Country || '', result: r.Result || '', text: r.Review, rating: Math.max(0, Math.min(5, +r.Rating || 0)), photo: img(r.Photo) }));
     const experts = (p.experts || BASE.experts || []).filter(e => e.Name).map(e => ({ field: e.Field || '', name: e.Name, role: e.Role || '', about: e.About || '', photo: img(e.Photo) }));
     const visa = (p.visa || BASE.visa || []).filter(v => v.Country).map(v => ({ country: cn(v.Country), type: v['Visa type'] || '', time: v['Processing time'] || '', docs: v['Key documents'] ? String(v['Key documents']).split('|').map(s => s.trim()).filter(Boolean) : [], link: v['Official link'] || '', notes: v.Notes || '', checked: String(v['Last checked'] || '') }));
-    return { opps, seminars: sem, news, videos: vids, reviews, experts, visa, settings: p.settings || {}, guides: BASE.regionGuides || {}, dupes };
+    const mats = (p.materials || []).filter(m => m.Title && /^https?:\/\//i.test(String(m.Link || '').trim()) && !/^(draft|hidden)$/i.test(String(m.Status || '').trim())).map(m => ({ title: String(m.Title).trim(), type: String(m.Type || 'Guide').trim(), text: m.Description || '', link: String(m.Link).trim(), cat: m.Category || '', added: String(m['Added on'] || ''), feat: /^y/i.test(m.Featured), rel: String(m['Related scholarships'] || '').split(/[|;\n]/).map(x => x.trim().toLowerCase()).filter(Boolean) })).sort((a, b) => b.feat - a.feat || b.added.localeCompare(a.added));
+    return { opps, materials: mats, seminars: sem, news, videos: vids, reviews, experts, visa, settings: p.settings || {}, guides: BASE.regionGuides || {}, dupes };
   }
   const UP = { C, $, $$, esc, LV, REGIONS, RCOL, RDESC, SUBJECTS, COUNTRIES, fmtDate, ytId, soon, img, A, count: 0, D: build(null) };
 
@@ -104,27 +105,38 @@
       const rows = sheetRows(txt(file), ss), head = (rows.shift() || []).map(h => String(h || '').trim());
       out[name.toLowerCase()] = rows.filter(r => r.some(c => c !== undefined && c !== '')).map(r => { const o = {}; head.forEach((h, i) => { if (!h) return; let v = r[i] === undefined ? '' : r[i]; if (/date|added on|verified on/i.test(h) && /^\d{5}(\.\d+)?$/.test(v) && +v > 30000 && +v < 80000) v = new Date(Math.round((+v - 25569) * 86400000)).toISOString().slice(0, 10); o[h] = v; }); return o; }); }
     const settings = {}; (out.settings || []).forEach(r => { if (r.Key) settings[String(r.Key).trim()] = r.Value; });
-    return { opportunities: out.opportunities || [], seminars: out.seminars || [], news: out.news || [], videos: out.videos || [], reviews: out.reviews || [], experts: out.experts || [], visa: out.visa || [], settings };
+    return { opportunities: out.opportunities || [], seminars: out.seminars || [], news: out.news || [], videos: out.videos || [], reviews: out.reviews || [], experts: out.experts || [], visa: out.visa || [], materials: out.materials || [], settings };
   }
   UP.readXlsx = readXlsx;
+  // Live content from a Google Sheet (set sheetId in config.js). Edits show on the site a few seconds after you change a cell.
+  function csv(t) { const rows = []; let r = [], f = '', q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; } else if (c === '"') q = true; else if (c === ',') { r.push(f); f = ''; } else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; r.push(f); rows.push(r); r = []; f = ''; } else f += c; } if (f !== '' || r.length) { r.push(f); rows.push(r); } return rows; }
+  async function readSheets(id) {
+    const need = { opportunities: 'Name', seminars: 'Title', news: 'Summary', videos: 'YouTube', reviews: 'Review', experts: 'Field', visa: 'Visa type', materials: 'Related scholarships', settings: 'Key' }, out = {};
+    await Promise.all(Object.keys(need).map(async k => { try { const r = await tfetch('https://docs.google.com/spreadsheets/d/' + encodeURIComponent(id) + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(k.charAt(0).toUpperCase() + k.slice(1))); if (!r.ok) return; const rows = csv(await r.text()), head = (rows.shift() || []).map(h => h.trim()); if (!head.includes(need[k])) return; out[k] = rows.filter(x => x.some(c => c !== '')).map(x => { const o = {}; head.forEach((h, i) => { if (h) o[h] = x[i] === undefined ? '' : x[i]; }); return o; }); } catch (e) { } }));
+    const settings = {}; (out.settings || []).forEach(r => { if (r.Key) settings[String(r.Key).trim()] = r.Value; });
+    return { opportunities: out.opportunities || [], seminars: out.seminars || [], news: out.news || [], videos: out.videos || [], reviews: out.reviews || [], experts: out.experts || [], visa: out.visa || [], materials: out.materials || [], settings };
+  }
+  UP.readSheets = readSheets;
+  // Free materials that belong to one scholarship (by its name or id), plus those marked "All".
+  const nz = x => String(x).toLowerCase().replace(/[^a-z0-9]/g, '');
+  UP.matFor = o => { const id = nz(o.id), nm = nz(o.name), sc = m => m.rel.some(r => nz(r) === id || nz(r) === nm || (nz(r).length > 2 && nm.includes(nz(r)))) ? 2 : m.rel.includes('all') ? 1 : 0; return UP.D.materials.map(m => [sc(m), m]).filter(x => x[0]).sort((a, b) => b[0] - a[0]).map(x => x[1]); };
+  UP.matCard = m => `<a class="mat" href="${esc(m.link)}" target="_blank" rel="noopener"><span class="mt">${esc(m.type)}</span><b>${esc(m.title)}</b>${m.text ? `<p>${esc(m.text)}</p>` : ''}<span class="mo">${/youtu/i.test(m.link) ? 'Watch' : 'Open or download'} &rarr;</span></a>`;
   async function boot(active, render) {
     let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { }
     const run = p => { UP.D = build(p); applySettings(UP.D.settings); shell(active); render(UP); reveal(); };
     let first = null; try { first = raw ? JSON.parse(raw) : null; } catch (e) { }
     run(first);
-    if (C.contentFile) {
-      try { const r = await fetch(C.contentFile, { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); const p = await readXlsx(await r.arrayBuffer()), s = JSON.stringify(p);
-        if (p.opportunities.length && s !== raw) { try { localStorage.setItem(KEY, s); } catch (e) { } run(p); }
-        if (UP.D.dupes.length) console.warn('Same-name rows were merged into one card:', UP.D.dupes);
-      } catch (e) { console.warn('Content file not loaded; using saved or built-in data.', e); }
-    }
+    let src = null;
+    if (C.sheetId) { try { src = await readSheets(C.sheetId); if (!src.opportunities.length) src = null; } catch (e) { src = null; } if (!src) console.warn('Google Sheet not loaded (is it shared as "Anyone with the link: Viewer"?). Using the Excel file instead.'); }
+    if (!src && C.contentFile) { try { const r = await fetch(C.contentFile, { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); src = await readXlsx(await r.arrayBuffer()); } catch (e) { console.warn('Content file not loaded; using saved or built-in data.', e); } }
+    if (src && src.opportunities.length) { const s = JSON.stringify(src); if (s !== raw) { try { localStorage.setItem(KEY, s); } catch (e) { } run(src); } if (UP.D.dupes.length) console.warn('Same-name rows were merged into one card:', UP.D.dupes); }
     if (C.scriptUrl) { try { const r = await fetch(C.scriptUrl + (C.scriptUrl.includes('?') ? '&' : '?') + 'action=count'), j = await r.json(); if (+j.count >= 0 && +j.count !== UP.count) { UP.count = +j.count; shell(active); render(UP); reveal(); } } catch (e) { } }
   }
   UP.boot = boot;
 
   const ICON = { pen: '<path d="M4 20l4-1 11-11-3-3L5 16z"/>', doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>', cap: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>', check: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>', globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', play: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z"/>' };
   UP.icon = k => `<span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ICON.check}</svg></span>`;
-  const logo = '<svg width="38" height="38" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#0A1A33"/><path d="M8 17l12-6 12 6-12 6z" fill="#E3A72F"/><path d="M13 20.5v5c0 1.6 3.2 3.2 7 3.2s7-1.6 7-3.2v-5l-7 3.4z" fill="#fff"/></svg>';
+  const logo = '<img class="lg" src="images/logo-mark.jpg" alt="UNIPILOT GLOBAL logo" width="63" height="50">';
 
   const dg = s => String(s || '').replace(/\D/g, '');
   UP.waDisplay = () => C.whatsapp ? (C.whatsappDisplay && dg(C.whatsappDisplay) === dg(C.whatsapp) ? C.whatsappDisplay : '+' + dg(C.whatsapp)) : '';
@@ -137,7 +149,7 @@
       <nav id="nav">${nav.map(n => `<a href="${n.href}" class="${n.id === active ? 'on' : ''}">${esc(n.label)}</a>`).join('')}<a class="navcta" href="consultation.html">Book a consultation</a>${w ? `<a class="navwa" href="${w}" target="_blank" rel="noopener">Chat on WhatsApp</a>` : ''}</nav>
       ${w ? `<a class="btn sm wa hide-m" href="${w}" target="_blank" rel="noopener">WhatsApp</a>` : ''}<a class="btn sm" href="consultation.html">Book a consultation</a><button id="menu" aria-label="Open menu" aria-expanded="false"><i></i><i></i><i></i></button></div></header>`;
     $('#menu').onclick = e => { const o = $('#nav').classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', o); };
-    $('#ftr').innerHTML = `<footer><div class="w"><div class="fg"><div><h4>${esc(C.brand)}</h4><p>${esc(C.tagline)}. We help students find scholarships abroad and prepare stronger applications.</p>
+    $('#ftr').innerHTML = `<footer><div class="w"><div class="fg"><div><a class="flogo" href="index.html"><img src="images/logo-full.jpg" alt="UNIPILOT GLOBAL" width="120" height="96"></a><h4>${esc(C.brand)}</h4><p>${esc(C.tagline)}. We help students find scholarships abroad and prepare stronger applications.</p>
       ${true ? `<form id="subf" class="sub"><input type="email" name="e" required placeholder="Email for deadline alerts" aria-label="Email"><button class="btn sm" type="submit">Join</button></form><p id="subm" style="margin-top:8px"></p>` : ''}</div>
       <div><h4>Explore</h4>${nav.map(n => `<div><a href="${n.href}">${esc(n.label)}</a></div>`).join('')}<div><a href="consultation.html">Book a consultation</a></div><div><a href="reviews.html">Share your experience</a></div><div><a href="privacy.html">Privacy</a></div></div>
       <div><h4>Continents</h4>${REGIONS.map(r => `<div><a href="scholarships.html?region=${encodeURIComponent(r[0])}">${esc(r[0])}</a></div>`).join('')}</div>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free scholarship materials | UNIPILOT GLOBAL</title><meta name="description" content="Free SOP and CV templates, checklists, sample documents and video guides for scholarship applicants."><meta property="og:title" content="Free scholarship materials | UNIPILOT GLOBAL"><meta property="og:description" content="Free SOP and CV templates, checklists, sample documents and video guides for scholarship applicants."><meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Free materials</span><h1>Free guides, templates and checklists</h1><p>Everything we share to help you win a scholarship: SOP and CV templates, checklists, sample documents and video guides.</p></div></section>
+<section class="sec"><div class="w"><div class="mbar"><input id="ms" type="search" placeholder="Search, for example SOP, CV, DAAD" aria-label="Search materials"><div class="chips" id="mt"></div></div><div class="mgrid" id="ml"></div>
+<div class="box c" style="margin-top:30px"><h3>Want an expert to check your application?</h3><p class="mute">Our advisors review your SOP, CV and documents one to one.</p><a class="btn" href="consultation.html">Book a consultation</a></div></div></section>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script>
+let ty = '', q = '';
+UP.boot('materials', U => {
+  const { $, $$, esc, D } = U, types = Array.from(new Set(D.materials.map(m => m.type)));
+  $('#mt').innerHTML = D.materials.length ? ['All'].concat(types).map(c => `<button class="chip ${(c === 'All' ? '' : c) === ty ? 'on' : ''}" data-c="${esc(c === 'All' ? '' : c)}">${esc(c)}</button>`).join('') : '';
+  $('#mt').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { ty = b.dataset.c; list(); } };
+  $('#ms').oninput = e => { q = e.target.value.toLowerCase(); list(); };
+  function list() {
+    $$('.chip', $('#mt')).forEach(b => b.classList.toggle('on', b.dataset.c === ty));
+    const l = D.materials.filter(m => (!ty || m.type === ty) && (!q || (m.title + ' ' + m.text + ' ' + m.cat + ' ' + m.rel.join(' ')).toLowerCase().includes(q)));
+    $('#ml').innerHTML = l.length ? l.map(U.matCard).join('') : D.materials.length ? '<p class="mute">Nothing matches your search yet.</p>' : '<div class="box c" style="grid-column:1/-1"><h3>Free materials are coming soon</h3><p class="mute">We are preparing guides, templates and checklists. Message us on WhatsApp if you need something specific.</p></div>';
+  }
+  list();
+});
+</script></body></html>
