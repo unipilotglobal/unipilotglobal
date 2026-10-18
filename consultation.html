@@ -5,9 +5,13 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
-<section class="sec"><div class="w" style="max-width:900px"><span class="eyebrow">Consultation</span><h1 style="font-size:clamp(2rem,4vw,3rem)">Tell us about your goals</h1><p class="lead">The more detail you share, the more specific our first reply will be. Fields marked * are required.</p><ul class="assure"><li>Your details stay private</li><li>Your request is emailed to our team instantly</li><li>You also get a confirmation copy</li></ul><p id="chat" class="mute"></p><p style="margin:4px 0 0"><a href="#cf"><b>Skip to the request form &darr;</b></a></p>
-<div class="box" id="expert" style="margin:26px 0"><h2 style="font-size:1.5rem">Explore opportunities with a field expert</h2><p class="mute">Choose your subject. We will match you with an advisor who knows the scholarships, supervisors and labs in your field.</p><div class="chips big" id="subjchips"></div><div class="three" id="experts" style="margin-top:18px"></div></div>
-<div id="out"></div><form class="box f" id="cf">
+<section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Mentors</span><h1>Learn from mentors who have been where you want to go</h1><p>Browse our mentors, open a profile to read their full story, and book a session with us in one step.</p><p style="margin-top:20px"><button class="btn lg" id="bk0" type="button">Book a consultation</button> <span id="chat" class="mute" style="margin-left:14px"></span></p></div></section>
+<section class="sec"><div class="w"><div id="mfl"><div class="mbar2"><input id="ms" type="search" placeholder="Search by name, field or scholarship" aria-label="Search mentors"><select id="mfield" aria-label="Field"></select></div><div class="chips" id="mtags"></div></div>
+<p class="mute" id="mcnt" style="margin:16px 0 14px"></p><div class="mg" id="mg"></div>
+<div class="box c" style="margin-top:36px"><h3>Not sure who to pick?</h3><p class="mute">Tell us your goals and we will match you with the right mentor.</p><button class="btn" id="bk1" type="button">Book a consultation</button></div></div></section>
+</main>
+<dialog class="m2" id="pd" aria-label="Mentor profile"></dialog>
+<dialog class="m2" id="bk" aria-label="Book a consultation"><button class="x" type="button" data-x aria-label="Close">&times;</button><div class="in"><h2 style="margin:0 0 4px">Book a consultation</h2><p class="mute" id="bwith" style="margin:0 0 8px"></p><ul class="assure"><li>Your details stay private</li><li>Emailed to our team instantly</li><li>You also get a confirmation copy</li></ul><div id="out"></div><form class="box f" id="cf">
 <h2>1. About you</h2><div><label for="name">Full name *</label><input id="name" required autocomplete="name"></div><div><label for="email">Email *</label><input id="email" type="email" required autocomplete="email"></div>
 <div><label for="phone">WhatsApp or phone *</label><input id="phone" required autocomplete="tel"></div><div><label for="cit">Country of citizenship *</label><input id="cit" required></div><div><label for="age">Age</label><input id="age" type="number" min="14" max="80"></div>
 <h2>2. Academic profile</h2><div><label for="cur">Current education *</label><select id="cur"><option>High school</option><option>Bachelor's in progress</option><option>Bachelor's completed</option><option>Master's in progress</option><option>Master's completed</option><option>Working professional</option></select></div>
@@ -20,24 +24,48 @@
 <div class="w2"><label for="doc">Link to your SOP or CV (Google Drive, view access)</label><input id="doc" type="url" placeholder="Optional. Needed for SOP and CV reviews"></div>
 <div class="w2"><label for="msg">Anything else we should know?</label><textarea id="msg" rows="3"></textarea></div><input type="text" id="hp" style="display:none" tabindex="-1" autocomplete="off">
 <div class="w2"><label style="font-weight:500"><input type="checkbox" id="ok" required style="width:auto"> I agree that UNIPILOT GLOBAL may contact me about this request and store my details. <a href="privacy.html" target="_blank">Privacy</a></label></div>
-<div class="w2"><button class="btn lg" id="go" type="submit">Send my request</button></div></form></div></section>
-</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<div class="w2"><button class="btn lg" id="go" type="submit">Send my request</button></div></form></div></dialog>
+<div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
 <script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
 <script>
-let ready = false, chosen = '';
+let ready = false, deep = false, tag = '', fld = '', q = '', expert = '';
 UP.boot('', U => {
-  const { C, $, esc, D } = U, P = new URLSearchParams(location.search), svc = id => C.services.find(p => p.id === id);
-  const showExperts = f => { const m = D.experts.filter(e => e.field === f); $('#experts').innerHTML = (m.length ? m : D.experts).map(U.expertCard).join(''); U.car($('#experts')); };
-  $('#chat').innerHTML = U.wa() ? 'Prefer to chat? <a href="' + U.wa() + '" target="_blank" rel="noopener"><b>WhatsApp ' + esc(U.waDisplay()) + '</b></a>' : '';
-  $('#subjchips').innerHTML = U.SUBJECTS.map(s => `<button type="button" class="chip ${s === chosen ? 'on' : ''}" data-s="${esc(s)}">${esc(s)}</button>`).join(''); showExperts(chosen);
-  $('#subjchips').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; chosen = b.dataset.s; $('#subject').value = chosen; if (svc('expert')) $('#service').value = svc('expert').name; U.$$('#subjchips .chip').forEach(x => x.classList.toggle('on', x === b)); showExperts(chosen); $('#cf').scrollIntoView({ behavior: 'smooth' }); };
-  if (ready) return; ready = true;
-  U.REGIONS.forEach(r => $('#region').add(new Option(r[0], r[0]))); U.SUBJECTS.concat(['Any field']).forEach(s => $('#subject').add(new Option(s, s)));
-  C.services.forEach(p => $('#service').add(new Option(p.name + (p.price ? ' (' + p.price + ')' : ''), p.name)));
-  const o = D.opps.find(x => x.id === P.get('s')), sv = svc(P.get('service')), expert = P.get('expert') || '';
-  if (o) { $('#sch').value = o.name; $('#level').value = o.type === 'Internship' ? 'Internship' : ({ Bachelor: "Bachelor's", Master: "Master's", PhD: 'PhD' }[o.levels[0]] || "Master's"); $('#region').value = o.region; }
-  if (P.get('subject')) { chosen = P.get('subject'); $('#subject').value = chosen; U.$$('#subjchips .chip').forEach(x => x.classList.toggle('on', x.dataset.s === chosen)); showExperts(chosen); }
-  if (sv) $('#service').value = sv.name;
+  const { C, $, $$, esc, D } = U, P = new URLSearchParams(location.search), svc = id => C.services.find(p => p.id === id), byId = id => D.experts.find(e => e.id === id), fn = n => String(n).split(' ')[0];
+  $('#chat').innerHTML = U.wa() ? 'or chat on <a href="' + U.wa() + '" target="_blank" rel="noopener"><b>WhatsApp ' + esc(U.waDisplay()) + '</b></a>' : '';
+  const cnt = {}; D.experts.forEach(e => e.tags.forEach(t => { const k = t.toLowerCase(); cnt[k] = cnt[k] || [t, 0]; cnt[k][1]++; }));
+  const tl = Object.keys(cnt).map(k => cnt[k]).sort((a, b) => b[1] - a[1]).slice(0, 14).map(x => x[0]), fl = Array.from(new Set(D.experts.map(e => e.field).filter(Boolean))).sort();
+  $('#mfl').hidden = D.experts.length < 4;
+  $('#mfield').innerHTML = '<option value="">All fields</option>' + fl.map(f => `<option>${esc(f)}</option>`).join(''); $('#mfield').value = fld;
+  $('#mtags').innerHTML = tl.length ? ['All scholarships'].concat(tl).map((t, i) => `<button type="button" class="chip ${(i ? t : '') === tag ? 'on' : ''}" data-t="${esc(i ? t : '')}">${esc(t)}</button>`).join('') : '';
+  const list = () => { $$('#mtags .chip').forEach(b => b.classList.toggle('on', b.dataset.t === tag)); const w = q.toLowerCase().split(/\s+/).filter(Boolean), l = D.experts.filter(e => (!tag || e.tags.some(t => t.toLowerCase() === tag.toLowerCase())) && (!fld || e.field === fld) && w.every(x => (e.name + ' ' + e.role + ' ' + e.tagline + ' ' + e.field + ' ' + e.tags.join(' ') + ' ' + e.about).toLowerCase().includes(x))).sort((a, b) => b.feat - a.feat || a.name.localeCompare(b.name));
+    $('#mcnt').textContent = D.experts.length ? l.length + (l.length === 1 ? ' mentor' : ' mentors') : ''; $('#mg').innerHTML = l.length ? l.map(U.mentorCard).join('') : '<div class="box c" style="grid-column:1/-1"><h3>' + (D.experts.length ? 'No mentor matches yet' : 'Our mentors are joining soon') + '</h3><p class="mute">Tell us what you need and we will find the right person.</p><button class="btn" type="button" data-b="">Book a consultation</button></div>'; };
+  list();
+  const open = d => { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }, shut = d => { if (d.close) d.close(); else d.removeAttribute('open'); };
+  const book = e => { expert = e ? e.name : ''; $('#bwith').innerHTML = e ? 'Booking with <b>' + esc(e.name) + '</b>' : 'Tell us about your goals and we will match you with the right mentor.'; if (e) { if (Array.from($('#subject').options).some(o => o.value === e.field)) $('#subject').value = e.field; if (svc('expert')) $('#service').value = svc('expert').name; } open($('#bk')); };
+  const li = (a, t) => a.length ? `<h4>${t}</h4><ul class="pl">${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+  const profile = e => { if (!e) return; $('#pd').innerHTML = `<button class="x" type="button" data-x aria-label="Close">&times;</button><div class="in"><div class="pf"><div><div class="mph pbig">${U.photoHTML(e)}</div><p class="pfs">${e.loc ? `<span>${esc(e.loc)}</span>` : ''}${e.langs.length ? `<span>Languages: ${esc(e.langs.join(', '))}</span>` : ''}</p>${e.li ? `<a class="btn sm out blk" href="${esc(e.li)}" target="_blank" rel="noopener">LinkedIn profile</a>` : ''}</div><div><h2 style="margin:0">${esc(e.name)}</h2><p class="mr">${esc(e.role)}</p>${e.tagline ? `<p class="mt2"><b>${esc(e.tagline)}</b></p>` : ''}<p class="mtags">${e.field ? `<span class="pill">${esc(e.field)}</span>` : ''}${e.tags.map(t => `<span class="pill g">${esc(t)}</span>`).join('')}</p><h4>About</h4><p class="ab">${esc(e.about)}</p>${li(e.exp, 'Experience and highlights')}${li(e.edu, 'Education')}<div class="mact" style="margin-top:22px"><button class="btn" type="button" data-b="${esc(e.id)}">Book with ${esc(fn(e.name))}</button>${U.wa() ? `<a class="btn out" href="${U.wa('Hello, I would like to book a session with ' + e.name)}" target="_blank" rel="noopener">Ask on WhatsApp</a>` : ''}</div></div></div></div>`; open($('#pd')); try { history.replaceState(null, '', '?mentor=' + e.id); } catch (x) { } };
+  $('#mtags').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tag = b.dataset.t; list(); } };
+  $('#ms').oninput = e => { q = e.target.value; list(); }; $('#mfield').onchange = e => { fld = e.target.value; list(); };
+  $('#mg').onclick = e => { const b = e.target.closest('[data-b]'); if (b) { book(byId(b.dataset.b)); return; } const m = e.target.closest('[data-m]'); if (m) profile(byId(m.dataset.m)); };
+  $('#mg').onkeydown = e => { if (e.key === 'Enter' && e.target.dataset.m) profile(byId(e.target.dataset.m)); };
+  $('#pd').onclick = e => { if (e.target.closest('[data-x]') || e.target === $('#pd')) shut($('#pd')); const b = e.target.closest('[data-b]'); if (b) { shut($('#pd')); book(byId(b.dataset.b)); } };
+  $('#pd').onclose = () => { try { history.replaceState(null, '', location.pathname); } catch (x) { } };
+  $('#bk').onclick = e => { if (e.target.closest('[data-x]') || e.target === $('#bk')) shut($('#bk')); };
+  $('#bk0').onclick = $('#bk1').onclick = () => book(null);
+  const first = !ready; ready = true;
+  const o = D.opps.find(x => x.id === P.get('s')), sv = svc(P.get('service'));
+  if (first) {
+    U.REGIONS.forEach(r => $('#region').add(new Option(r[0], r[0]))); U.SUBJECTS.concat(['Any field']).forEach(s => $('#subject').add(new Option(s, s)));
+    C.services.forEach(p => $('#service').add(new Option(p.name + (p.price ? ' (' + p.price + ')' : ''), p.name)));
+    if (o) { $('#sch').value = o.name; $('#level').value = o.type === 'Internship' ? 'Internship' : ({ Bachelor: "Bachelor's", Master: "Master's", PhD: 'PhD' }[o.levels[0]] || "Master's"); $('#region').value = o.region; }
+    if (P.get('subject')) $('#subject').value = P.get('subject');
+    if (sv) $('#service').value = sv.name;
+  }
+  // Links such as ?mentor=name open a profile, and ?service= / ?s= / ?expert= open the booking form. Wait until the mentors have loaded.
+  if (!deep) { const m = byId(P.get('mentor') || ''), ex = D.experts.find(x => x.name === P.get('expert'));
+    if (P.get('mentor')) { if (m) { deep = true; profile(m); } }
+    else if (o || sv || P.get('form') || P.get('expert')) { if (!P.get('expert') || ex || D.experts.length) { deep = true; book(ex || null); } } }
+  if (!first) return;
   const DK = 'up_draft_cf', ids = ['name', 'email', 'phone', 'cit', 'age', 'gpa', 'tests', 'intake', 'major', 'sch', 'doc', 'msg'];
   try { const d = JSON.parse(localStorage.getItem(DK) || '{}'); ids.forEach(i => { if (d[i] && !$('#' + i).value) $('#' + i).value = d[i]; }); } catch (e) { }
   $('#cf').addEventListener('input', () => { try { const d = {}; ids.forEach(i => d[i] = $('#' + i).value); localStorage.setItem(DK, JSON.stringify(d)); } catch (e) { } });
