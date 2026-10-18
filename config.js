@@ -8,6 +8,7 @@ window.CONFIG = {
   email: 'unipilotglobal@gmail.com',
   formEmail: '',   // optional: the inbox that receives form requests. Empty = same as email above. Use the address that already got mails from submissions@formsubmit.co
   facebook: 'https://www.facebook.com/profile.php?id=61580476092952',
+  linkedin: 'https://www.linkedin.com/company/unipilot-global/',
 
   // Your content lives in this Excel file inside the site (data folder). Edit it, upload it to GitHub, done.
   // LIVE EDITING: paste your Google Sheet ID here (the long text between /d/ and /edit in the sheet address). Empty = use the Excel file below.

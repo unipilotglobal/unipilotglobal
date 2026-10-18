@@ -40,7 +40,7 @@ UP.boot('home', U => {
   $('#svcs').innerHTML = C.services.slice(0, 4).map(v => `<div class="box svc">${U.icon(v.icon)}<h3>${esc(v.name)}</h3><p class="mute" style="margin:0;font-size:.92rem">${esc(v.desc)}</p></div>`).join('');
   const up = D.seminars.filter(x => x.up)[0], past = D.seminars.filter(x => !x.up && x.rec)[0];
   $('#semh').innerHTML = up ? U.semCard(up) : past ? U.semCard(past) : `<div class="semc"><h3>Next seminar coming soon</h3><p class="mute">Follow us to hear about the next free session first.</p>${C.facebook ? `<a class="btn" href="${esc(C.facebook)}" target="_blank" rel="noopener">Follow on Facebook</a>` : ''}</div>`;
-  $('#revL').innerHTML = D.reviews.length ? D.reviews.slice(0, 3).map(U.reviewCard).join('') : '<div class="box c" style="grid-column:1/-1"><h3>Studied with us? Tell the next student how it went.</h3><p class="mute">Reviews are checked by our team before they are published.</p><a class="btn" href="reviews.html#rf">Write a review</a></div>';
+  $('#revL').innerHTML = D.reviews.length ? D.reviews.slice(0, 12).map(U.reviewCard).join('') : '<div class="box c" style="grid-column:1/-1"><h3>Studied with us? Tell the next student how it went.</h3><p class="mute">Reviews are checked by our team before they are published.</p><a class="btn" href="reviews.html#rf">Write a review</a></div>'; U.car($('#revL'));
   const nw = D.news.slice().sort((a, b) => b.pin - a.pin || b.date.localeCompare(a.date)).slice(0, 3); $('#newsS').hidden = !nw.length; $('#newsL').innerHTML = nw.map(U.newsCard).join('');
 });
 </script></body></html>

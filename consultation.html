@@ -5,7 +5,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
-<section class="sec"><div class="w" style="max-width:900px"><span class="eyebrow">Consultation</span><h1 style="font-size:clamp(2rem,4vw,3rem)">Tell us about your goals</h1><p class="lead">The more detail you share, the more specific our first reply will be. Fields marked * are required.</p><ul class="assure"><li>Your details stay private</li><li>Your request is emailed to our team instantly</li><li>You also get a confirmation copy</li></ul><p id="chat" class="mute"></p>
+<section class="sec"><div class="w" style="max-width:900px"><span class="eyebrow">Consultation</span><h1 style="font-size:clamp(2rem,4vw,3rem)">Tell us about your goals</h1><p class="lead">The more detail you share, the more specific our first reply will be. Fields marked * are required.</p><ul class="assure"><li>Your details stay private</li><li>Your request is emailed to our team instantly</li><li>You also get a confirmation copy</li></ul><p id="chat" class="mute"></p><p style="margin:4px 0 0"><a href="#cf"><b>Skip to the request form &darr;</b></a></p>
 <div class="box" id="expert" style="margin:26px 0"><h2 style="font-size:1.5rem">Explore opportunities with a field expert</h2><p class="mute">Choose your subject. We will match you with an advisor who knows the scholarships, supervisors and labs in your field.</p><div class="chips big" id="subjchips"></div><div class="three" id="experts" style="margin-top:18px"></div></div>
 <div id="out"></div><form class="box f" id="cf">
 <h2>1. About you</h2><div><label for="name">Full name *</label><input id="name" required autocomplete="name"></div><div><label for="email">Email *</label><input id="email" type="email" required autocomplete="email"></div>
@@ -27,7 +27,7 @@
 let ready = false, chosen = '';
 UP.boot('', U => {
   const { C, $, esc, D } = U, P = new URLSearchParams(location.search), svc = id => C.services.find(p => p.id === id);
-  const showExperts = f => { const m = D.experts.filter(e => e.field === f); $('#experts').innerHTML = (m.length ? m : D.experts).map(U.expertCard).join(''); };
+  const showExperts = f => { const m = D.experts.filter(e => e.field === f); $('#experts').innerHTML = (m.length ? m : D.experts).map(U.expertCard).join(''); U.car($('#experts')); };
   $('#chat').innerHTML = U.wa() ? 'Prefer to chat? <a href="' + U.wa() + '" target="_blank" rel="noopener"><b>WhatsApp ' + esc(U.waDisplay()) + '</b></a>' : '';
   $('#subjchips').innerHTML = U.SUBJECTS.map(s => `<button type="button" class="chip ${s === chosen ? 'on' : ''}" data-s="${esc(s)}">${esc(s)}</button>`).join(''); showExperts(chosen);
   $('#subjchips').onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; chosen = b.dataset.s; $('#subject').value = chosen; if (svc('expert')) $('#service').value = svc('expert').name; U.$$('#subjchips .chip').forEach(x => x.classList.toggle('on', x === b)); showExperts(chosen); $('#cf').scrollIntoView({ behavior: 'smooth' }); };

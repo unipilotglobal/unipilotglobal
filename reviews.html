@@ -18,7 +18,7 @@
 <script>
 let ready = false;
 UP.boot('reviews', U => {
-  const { C, $, esc, D } = U; $('#rl').innerHTML = D.reviews.map(U.reviewCard).join(''); $('#empty').hidden = D.reviews.length > 0;
+  const { C, $, esc, D } = U; $('#rl').innerHTML = D.reviews.map(U.reviewCard).join(''); U.car($('#rl')); $('#empty').hidden = D.reviews.length > 0;
   if (ready) return; ready = true;
   $('#rf').onsubmit = async e => {
     e.preventDefault(); if ($('#hp').value) return; const v = id => $('#' + id).value.trim(), out = $('#out'), btn = $('#go'), label = btn.textContent;
