@@ -31,6 +31,7 @@ UP.boot('home', U => {
   U.fill(['level', 'subject', 'region', 'country']);
   $('#fform').onsubmit = e => { e.preventDefault(); const p = new URLSearchParams(); ['level', 'subject', 'region', 'country'].forEach(k => $('#' + k).value && p.set(k, $('#' + k).value)); if ($('#hq').value.trim()) p.set('q', $('#hq').value.trim()); location.href = 'scholarships.html' + (p.toString() ? '?' + p : ''); };
   const s = U.students(), st = [`<div class="stat"><b data-n="${s.n}" data-p="${s.plus ? '+' : ''}">${U.fmtN(s.n)}${s.plus ? '+' : ''}</b><span>students guided</span></div>`, '<div class="stat"><b>6</b><span>continents covered</span></div>'];
+  const nSch = D.opps.filter(o => (o.type === 'Scholarship' || o.type === 'Internship') && !o.closed).length; if (nSch > 0) st.splice(1, 0, `<div class="stat"><b data-n="${nSch}">${nSch}</b><span>scholarships &amp; internships listed</span></div>`);
   if (U.seminarsHeld() > 0) st.push(`<div class="stat"><b data-n="${U.seminarsHeld()}">${U.seminarsHeld()}</b><span>free seminars held</span></div>`);
   if (C.yearsExperience) st.push(`<div class="stat"><b>${C.yearsExperience}+</b><span>years of experience</span></div>`);
   $('#stats').innerHTML = st.join('');
