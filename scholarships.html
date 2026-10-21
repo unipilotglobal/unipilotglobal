@@ -28,7 +28,7 @@ function buildFacets() {
 }
 function sync() {
   facs().forEach(([k]) => { const d = $('.fd[data-k=' + k + ']'); if (!d) return; const sel = S[k], b = $('.fb', d); b.classList.toggle('has', sel.length > 0); $('b', b).textContent = sel.length ? lab(k, sel[0]) + (sel.length > 1 ? ' +' + (sel.length - 1) : '') : '';
-    $$('.opt', d).forEach(el => { const cb = $('input', el), n = U0.filterList(U0.D.opps, Object.assign({}, S, { [k]: [cb.value] })).length; cb.checked = sel.includes(cb.value); $('i', el).textContent = n; el.classList.toggle('z', n === 0); }); });
+    $$('.opt', d).forEach(el => { const cb = $('input', el), n = U0.filterList(U0.D.opps, Object.assign({}, S, { [k]: [cb.value] })).length; cb.checked = sel.includes(cb.value); $('i', el).textContent = n; el.classList.toggle('z', n === 0); el.hidden = k === 'country' && !sel.includes(cb.value) && (n === 0 || (S.region.length > 0 && !S.region.includes(U0.regionOf(cb.value)))); }); });
   $('#vb').classList.toggle('has', S.video); $('#vb').setAttribute('aria-pressed', S.video);
 }
 function draw(rs) {
@@ -65,7 +65,7 @@ UP.boot('find', U => {
       if (!e.target.closest('.fd')) closePops();
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { closePops(); $('#sugg').hidden = true; } });
-    document.addEventListener('change', e => { const cb = e.target.closest('.opt input'); if (cb) { const k = cb.closest('.fd').dataset.k; S[k] = $$('.opt input', cb.closest('.fd')).filter(x => x.checked).map(x => x.value); draw(true); } if (e.target.id === 'sort') { S.sort = e.target.value; draw(true); } });
+    document.addEventListener('change', e => { const cb = e.target.closest('.opt input'); if (cb) { const k = cb.closest('.fd').dataset.k; S[k] = $$('.opt input', cb.closest('.fd')).filter(x => x.checked).map(x => x.value); if (k === 'region' && S.region.length) S.country = S.country.filter(c => S.region.includes(U0.regionOf(c))); draw(true); } if (e.target.id === 'sort') { S.sort = e.target.value; draw(true); } });
     document.addEventListener('input', e => { if (e.target.id === 'q') { S.q = e.target.value.trim(); suggest(); draw(true); } else if (e.target.matches('.pop input[type=search]')) { const t = e.target.value.toLowerCase(); $$('.opt', e.target.closest('.pop')).forEach(el => { el.style.display = el.dataset.t.includes(t) ? '' : 'none'; }); } });
     $('#q').addEventListener('blur', () => setTimeout(() => { $('#sugg').hidden = true; }, 200)); $('#q').addEventListener('focus', suggest);
     $('#more2').onclick = () => { shown += 12; draw(false); };

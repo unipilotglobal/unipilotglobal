@@ -6,10 +6,10 @@
 <link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
 <section class="hero"><svg class="route" viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path d="M-20 560C220 140 560 120 760 330S1100 420 1240 150"/><path d="M60 620C340 330 620 520 860 260S1120 80 1260 40"/><circle cx="760" cy="330" r="5"/><circle cx="860" cy="260" r="4"/><circle cx="230" cy="330" r="4"/><circle cx="1040" cy="400" r="4"/></svg>
-<div class="w hg"><div><span class="eyebrow">Africa · Asia · Europe · North America · South America · Oceania</span><h1 id="h1">Study abroad on a scholarship. We guide <em>every step.</em></h1>
+<div class="w hg"><div><span class="eyebrow">Scholarships · Internships · Expert guidance</span><h1 id="h1">Study abroad on a scholarship. We guide <em>every step.</em></h1>
 <p class="lead" id="hl">Search funded scholarships and internships on six continents, then get expert help with your SOP, CV, application and visa.</p>
 <div class="acts"><a class="btn" href="scholarships.html">Explore scholarships</a><a class="btn out" href="consultation.html">Book a consultation</a></div>
-<div class="trust"><span>Free seminars</span><span>SOP and CV review</span><span>Visa guidance</span><span>Support from shortlist to submission</span></div></div>
+</div>
 <form class="fcard" id="fform"><h2>Find my scholarship</h2><p class="mute" style="margin:0">Four quick choices. See matches instantly.</p>
 <label for="hq">Scholarship name (optional)</label><input id="hq" type="search" placeholder="e.g. DAAD, Erasmus, Fulbright"><label for="level">I want to study a</label><select id="level"></select><label for="subject">Subject</label><select id="subject"></select><label for="region">Continent</label><select id="region"></select><label for="country">Country</label><select id="country"></select>
 <button class="btn blk" style="margin-top:20px" type="submit">Show my matches</button></form></div></section>
@@ -29,15 +29,17 @@ UP.boot('home', U => {
   const { C, $, esc, D, REGIONS, RDESC } = U;
   if (C.heroTitle) $('#h1').innerHTML = U.esc(C.heroTitle) + (C.heroEm ? ' <em>' + U.esc(C.heroEm) + '</em>' : ''); if (C.heroLead) $('#hl').textContent = C.heroLead;
   U.fill(['level', 'subject', 'region', 'country']);
+  const fc = () => { const rg = $('#region').value, cur = $('#country').value, cs = Array.from(new Set(D.opps.filter(o => !rg || o.regions.includes(rg)).flatMap(o => o.countries))).filter(c => !rg || U.regionOf(c) === rg).sort(); $('#country').innerHTML = '<option value="">any country</option>' + cs.map(c => `<option>${esc(c)}</option>`).join(''); if (cs.includes(cur)) $('#country').value = cur; };
+  $('#region').onchange = fc; fc();
   $('#fform').onsubmit = e => { e.preventDefault(); const p = new URLSearchParams(); ['level', 'subject', 'region', 'country'].forEach(k => $('#' + k).value && p.set(k, $('#' + k).value)); if ($('#hq').value.trim()) p.set('q', $('#hq').value.trim()); location.href = 'scholarships.html' + (p.toString() ? '?' + p : ''); };
   const s = U.students(), st = [`<div class="stat"><b data-n="${s.n}" data-p="${s.plus ? '+' : ''}">${U.fmtN(s.n)}${s.plus ? '+' : ''}</b><span>students guided</span></div>`, '<div class="stat"><b>6</b><span>continents covered</span></div>'];
   const nSch = D.opps.filter(o => (o.type === 'Scholarship' || o.type === 'Internship') && !o.closed).length; if (nSch > 0) st.splice(1, 0, `<div class="stat"><b data-n="${nSch}">${nSch}</b><span>scholarships &amp; internships listed</span></div>`);
   if (U.seminarsHeld() > 0) st.push(`<div class="stat"><b data-n="${U.seminarsHeld()}">${U.seminarsHeld()}</b><span>free seminars held</span></div>`);
   if (C.yearsExperience) st.push(`<div class="stat"><b>${C.yearsExperience}+</b><span>years of experience</span></div>`);
   $('#stats').innerHTML = st.join('');
-  $('#tiles').innerHTML = REGIONS.map(r => { const ex = D.opps.filter(o => o.region === r[0]).slice(0, 3).map(o => o.name.replace(/\s*\(.*?\)/g, '').split(' ').slice(0, 3).join(' ')).join(', '); return `<a class="tile" style="--c:${r[1]}" href="scholarships.html?region=${encodeURIComponent(r[0])}"><h3>${esc(r[0])}</h3><p>${esc(RDESC[r[0]] || '')}${ex ? (RDESC[r[0]] ? '. ' : '') + 'Including ' + esc(ex) : ''}</p><span class="go">Explore &rarr;</span></a>`; }).join('');
+  $('#tiles').innerHTML = REGIONS.map(r => { const ex = D.opps.filter(o => o.regions.includes(r[0])).slice(0, 3).map(o => o.name.replace(/\s*\(.*?\)/g, '').split(' ').slice(0, 3).join(' ')).join(', '); return `<a class="tile" style="--c:${r[1]}" href="scholarships.html?region=${encodeURIComponent(r[0])}"><h3>${esc(r[0])}</h3><p>${esc(RDESC[r[0]] || '')}${ex ? (RDESC[r[0]] ? '. ' : '') + 'Including ' + esc(ex) : ''}</p><span class="go">Explore &rarr;</span></a>`; }).join('');
   const rec = D.opps.filter(o => !o.closed).slice().sort((a, b) => String(b.added).localeCompare(String(a.added)) || b.featured - a.featured), hasNew = rec.some(o => o.added);
-  $('#rtitle').textContent = hasNew ? 'Recently added' : 'Start exploring'; $('#recent').innerHTML = rec.slice(0, 6).map(U.card).join('');
+  $('#rtitle').textContent = hasNew ? 'Recently added' : 'Start exploring'; $('#recent').innerHTML = rec.slice(0, 3).map(U.card).join('');
   $('#svcs').innerHTML = C.services.slice(0, 4).map(v => `<div class="box svc">${U.icon(v.icon)}<h3>${esc(v.name)}</h3><p class="mute" style="margin:0;font-size:.92rem">${esc(v.desc)}</p></div>`).join('');
   const up = D.seminars.filter(x => x.up)[0], past = D.seminars.filter(x => !x.up && x.rec)[0];
   $('#semh').innerHTML = up ? U.semCard(up) : past ? U.semCard(past) : `<div class="semc"><h3>Next seminar coming soon</h3><p class="mute">Follow us to hear about the next free session first.</p>${C.facebook ? `<a class="btn" href="${esc(C.facebook)}" target="_blank" rel="noopener">Follow on Facebook</a>` : ''}</div>`;
