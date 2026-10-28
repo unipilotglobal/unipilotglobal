@@ -11,7 +11,7 @@
 <section class="sec" id="vidS"><div class="w"><h2>Free video guides</h2><div class="three" id="vids"></div></div></section>
 <section class="band"><div class="w"><h2>Never miss a seminar</h2><p style="color:#b9c8df">Follow us to hear about the next free session first.</p><span id="follow"></span></div></section>
 </main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
-<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script src="config.js"></script><script src="accounts.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
 <script>
 UP.boot('seminars', U => {
   const { C, $, esc, D } = U, up = D.seminars.filter(s => s.up).sort((a, b) => a.date.localeCompare(b.date)), past = D.seminars.filter(s => !s.up).sort((a, b) => b.date.localeCompare(a.date));

@@ -70,6 +70,7 @@
 <ul>
 <li>Information you send us in forms: name, email address, phone or WhatsApp number, country, study goals, grades, test scores, the scholarships you are interested in, and any message or document link you add.</li>
 <li>Booking and payment details, such as the service chosen, the pilot, the time and a payment reference. We do not store your card number.</li>
+<li>If you create an account: your name, email address, a password (kept only in scrambled form, so we cannot read it), an optional phone or WhatsApp number, your country and time zone, the scholarships you save, your alert choices, and the date you accepted this notice and the terms.</li>
 <li>Messages you send us by email or WhatsApp.</li>
 <li>Reviews and stories you choose to send, with your name, country and photo if you provide them.</li>
 <li>Basic technical data that our hosting and the services below receive when you visit, such as your IP address and browser type.</li>
@@ -87,6 +88,7 @@
 <p>We do not sell your personal data. We share limited data only with providers that help us run the service, and only as needed:</p>
 <ul>
 <li>Email and form delivery: your form is sent to our inbox through an email provider and a form delivery service (currently FormSubmit, and possibly Web3Forms or our own Google script).</li>
+<li>Account database and sign-in: Supabase, which stores your account data and runs sign-in for us (in a data centre in Europe).</li>
 <li>Website hosting for this site.</li>
 <li>Google Fonts, which loads our text fonts, and YouTube, which loads videos only after you click play, using YouTube's privacy-enhanced mode.</li>
 <li>WhatsApp, if you choose to message us there. WhatsApp's own policy then applies.</li>
@@ -95,13 +97,13 @@
 </ul>
 <p>Some of these providers are located outside your country, so your data may be processed abroad. We choose providers that protect data appropriately.</p>
 <h3>Storage on your device</h3>
-<p>This website does not use advertising cookies or analytics tools. It uses your browser's local storage only to help you: a saved draft of a form you are filling in, your ticked document checklist for a scholarship, a copy of recent content so pages load faster, and a temporary copy of a request that failed to send, so you do not lose it. You can clear these in your browser settings at any time.</p>
+<p>This website does not use advertising cookies or analytics tools. It uses your browser's local storage only to help you: a saved draft of a form you are filling in, your ticked document checklist for a scholarship, a copy of recent content so pages load faster, and a temporary copy of a request that failed to send, so you do not lose it. If you sign in, your browser also keeps a sign-in token so that you stay signed in. It is needed for your account to work and is removed when you sign out. You can clear all of these in your browser settings at any time.</p>
 <h3>How long we keep it</h3>
-<p>We keep your data only as long as needed to answer you, deliver the service, keep proper records and meet legal duties. You can ask us to delete it sooner.</p>
+<p>We keep your data only as long as needed to answer you, deliver the service, keep proper records and meet legal duties. You can ask us to delete it sooner. If you delete your account (My account, Your data and privacy), your login, saved items, alerts and profile details are erased straight away and future sessions are cancelled. Payment and accounting records that the law requires us to keep stay without your name.</p>
 <h3>Security</h3>
 <p>We use reasonable technical and organisational measures to protect your data against unauthorised access, misuse, change, disclosure or loss. No online service is completely secure, so please do not send us passwords or full card details.</p>
 <h3>Your rights</h3>
-<p>You can ask us to access, correct, update or delete your personal data, to restrict or object to how we use it, and to take back your consent at any time. If the EU or UK data protection law applies to you, you also have the right to data portability and to complain to your local data protection authority. To use any of these rights, email <span data-l="email"></span>.</p>
+<p>You can ask us to access, correct, update or delete your personal data, to restrict or object to how we use it, and to take back your consent at any time. If the EU or UK data protection law applies to you, you also have the right to data portability and to complain to your local data protection authority. If you have an account, you can download your data and delete your account yourself under My account. For anything else, email <span data-l="email"></span>.</p>
 <h3>Children</h3>
 <p>Our services are meant for students aged 16 and older. If you are younger, please ask a parent or guardian to contact us for you.</p>
 <h3>Changes to this policy</h3>
@@ -125,7 +127,7 @@
 </div></section>
 </main>
 <div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
-<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script src="config.js"></script><script src="accounts.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
 <script>
 UP.boot('', U => {
   const { C, $$ } = U, L = C.legal || {}, tbd = 'To be published once our business registration is complete.';

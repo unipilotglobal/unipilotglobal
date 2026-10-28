@@ -215,6 +215,11 @@
       <div><h4>Contact</h4>${w ? `<div><a href="${w}" target="_blank" rel="noopener">WhatsApp: ${esc(disp)}</a></div>` : ''}<div><a href="mailto:${esc(C.email)}">${esc(C.email)}</a></div>${so.map(s => `<div><a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a></div>`).join('')}</div></div>
       <p class="fine">Scholarship details are compiled from official programme information and change from year to year. Always confirm deadlines, amounts and requirements on the official website before you apply. ${esc(C.brand)} is an advisory service. We do not award scholarships and cannot guarantee admission or funding. &copy; ${new Date().getFullYear()} ${esc(C.brand)}</p></div></footer>${w ? `<a class="wafab" href="${w}" target="_blank" rel="noopener">Chat on WhatsApp</a>` : ''}`;
     const sf = $('#subf'); if (sf) sf.onsubmit = async e => { e.preventDefault(); const m = $('#subm'); try { await send({ action: 'subscribe', Email: sf.e.value.trim() }); m.textContent = 'Thank you. Check your inbox for a confirmation.'; sf.reset(); } catch (x) { m.textContent = 'Could not subscribe right now. Please email us instead.'; } };
+    // accounts: adds "Sign in / My account" (only when config.js has the Supabase values)
+    if (C.supabaseUrl && C.supabaseKey && (C.accountsLaunch === true || document.body.dataset.page === 'account')) {
+      if (UP.acc) UP.acc.header();
+      else if (!UP.accLoading) { UP.accLoading = true; const s = document.createElement('script'); s.src = 'assets/account.js'; s.onload = () => { if (UP.acc) UP.acc.header(); }; document.head.appendChild(s); }
+    }
   }
   function reveal() {
     const io = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; e.target.classList.add('in'); const n = e.target.dataset.n; if (n) { const t = +n, s = performance.now(), f = x => { const p = Math.min(1, (x - s) / 1100); e.target.textContent = UP.fmtN(Math.round(t * (1 - Math.pow(1 - p, 3)))) + (e.target.dataset.p || ''); if (p < 1) requestAnimationFrame(f); }; requestAnimationFrame(f); } io.unobserve(e.target); }), { threshold: .2 });

@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
 <div class="w sec" id="root" style="padding-top:40px"></div>
 </main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
-<script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script src="config.js"></script><script src="accounts.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
 <script>
 UP.boot('find', U => {
   const { C, $, esc, D, LV, RCOL } = U, id = new URLSearchParams(location.search).get('id'), o = D.opps.find(x => x.id === id), root = $('#root');
@@ -21,7 +21,7 @@ UP.boot('find', U => {
     : `<div class="vph"><h3>Video guide coming soon</h3><p>We are preparing a step-by-step video for this ${o.type.toLowerCase()}. Meanwhile, find application tutorials on YouTube or ask us to make this one next.</p><div class="acts"><a class="btn" href="${vq}" target="_blank" rel="noopener">Search YouTube guides</a>${C.youtubeChannel ? `<a class="btn out" href="${esc(C.youtubeChannel)}" target="_blank" rel="noopener">Our channel</a>` : ''}${w2 ? `<a class="btn out" href="${w2}" target="_blank" rel="noopener">Request this video</a>` : ''}</div></div>`;
   root.innerHTML = `<p><a href="scholarships.html">&larr; Back to finder</a></p><div class="det"><div>
   <div class="panel" style="border-top:5px solid ${RCOL[o.region] || '#1F4E8C'}"><span class="pill ${o.type}">${o.type}</span><span class="pill">${esc(o.levels.map(l => LV[l] || l).join(' / '))}</span><span class="pill">${esc(o.region)}</span>${o.funding === 'full' ? '<span class="pill ok">Fully funded</span>' : o.funding === 'stipend' ? '<span class="pill gold">Stipend or fellowship</span>' : ''}${o.closed ? '<span class="pill bad">Closed</span>' : ''}
-   <h1 style="font-size:clamp(1.9rem,3.6vw,2.7rem);margin-top:10px">${esc(o.name)}</h1><p class="mute">${esc(o.sponsor)}</p>
+   <h1 style="font-size:clamp(1.9rem,3.6vw,2.7rem);margin-top:10px">${esc(o.name)}</h1><p class="mute">${esc(o.sponsor)}</p>${C.supabaseUrl && C.supabaseKey && C.accountsLaunch === true ? `<p style="margin:12px 0 0"><button type="button" class="btn out sm" data-save="scholarship:${esc(o.id)}" disabled>&#9825; Save</button></p>` : ''}
    <div class="facts"><div><small>What it covers</small>${esc(o.award)}</div><div><small>Deadline</small>${esc(o.deadline)}</div><div><small>Host country</small>${esc(where)}</div><div><small>Subjects</small>${esc(subj)}</div><div><small>Application effort</small>${esc(o.effort || 'See official page')}</div>${o.best ? `<div><small>Best suited to</small>${esc(o.best)}</div>` : ''}</div>
    <p class="nav-note" style="margin:14px 0 0">${o.verified ? 'Details checked on ' + esc(U.fmtDate(o.verified)) + '. ' : ''}Dates and amounts change every year. Always confirm on the official page.</p></div>
   <div class="panel"><h2>Who can apply</h2><p style="margin:0">${esc(o.elig)}</p></div>
@@ -40,6 +40,7 @@ UP.boot('find', U => {
    ${(() => { const s = D.seminars.find(x => x.up); return s ? `<div class="box" style="margin-top:16px"><h3>Free seminar: ${esc(s.title)}</h3><p class="mute">${esc(U.fmtDate(s.date))}${s.time ? ', ' + esc(s.time) : ''}</p><a class="btn out blk" href="${esc(s.register || 'seminars.html')}" target="_blank" rel="noopener">Join free</a></div>` : ''; })()}
    <div class="box" style="margin-top:16px"><h3>After you win: visa and travel</h3><p class="mute">See the visa process step by step and what to prepare before you fly.</p><a class="btn out blk" href="services.html${o.countries[0] ? '?country=' + encodeURIComponent(o.countries[0]) : ''}#visa">Visa guide</a></div><div class="box" style="margin-top:16px"><h3>Get your SOP and CV reviewed</h3><p class="mute">Applications are won on the details. Our advisors review your documents against this opportunity.</p><a class="btn out blk" href="consultation.html?service=sop&s=${encodeURIComponent(o.id)}">Request a review</a></div></aside></div>`;
   $('#askb').onclick = () => U.ask(o);
+  { let tries = 0; const bs = () => { if (UP.acc) UP.acc.bindSave(root); else if (tries++ < 40) setTimeout(bs, 150); }; if (C.supabaseUrl && C.supabaseKey && C.accountsLaunch === true) bs(); }   // "Save" button (accounts)
   const ck = Array.from(document.querySelectorAll('.chk input')), K = 'up_chk_' + o.id; let st = []; try { st = JSON.parse(localStorage.getItem(K) || '[]'); } catch (e) { }
   const bar = () => { const n = ck.filter(c => c.checked).length, p = $('#chkp'); if (p) p.innerHTML = n + ' of ' + ck.length + ' ready<span class="pt"><i style="width:' + Math.round(100 * n / (ck.length || 1)) + '%"></i></span>'; };
   ck.forEach((c, i) => { c.checked = st.includes(i); c.onchange = () => { try { localStorage.setItem(K, JSON.stringify(ck.map((x, j) => x.checked ? j : -1).filter(j => j >= 0))); } catch (e) { } bar(); }; }); bar();
