@@ -58,7 +58,6 @@ window.CONFIG = {
     { id: 'guideline', icon: 'check', name: 'Scholarship Guideline', price: '', desc: 'A step-by-step guide to one scholarship: eligibility, documents, essays and timeline.' },
     { id: 'session',   icon: 'chat',  name: 'One-to-One Consultation', price: '', desc: 'Review your profile together and leave with a realistic shortlist and plan.' },
     { id: 'expert',    icon: 'user',  name: 'Field Expert Consultation', price: '', desc: 'Speak with an advisor experienced in your subject to explore scholarships, supervisors and labs.' },
-    { id: 'visa',      icon: 'globe', name: 'Visa & Pre-Departure Guidance', price: '', desc: 'Document checks, interview preparation and a clear plan from visa application to arrival.' },
     { id: 'interview', icon: 'user',  name: 'Interview Preparation', price: '', desc: 'Practice the questions panels ask and learn how to answer with confidence.' },
     { id: 'full',      icon: 'globe', name: 'Full Application Support', price: '', desc: 'Hands-on help from first shortlist to submission, including documents and deadlines.' }
   ],
@@ -69,9 +68,7 @@ window.CONFIG = {
     { id: 'find',      label: 'Scholarships',  href: 'scholarships.html' },
     { id: 'materials', label: 'Free Materials', href: 'materials.html' },
     { id: 'seminars',  label: 'Seminars',      href: 'seminars.html' },
-    { id: 'visa',      label: 'Visa',          href: 'visa.html' },
-    { id: 'services',  label: 'Services',      href: 'services.html' },
-    { id: 'reviews',   label: 'Stories',       href: 'reviews.html' },
-    { id: 'news',      label: 'News',          href: 'news.html' }
+    { id: 'services',  label: 'Services & Visa',      href: 'services.html' },
+    { id: 'news',      label: 'News & Stories',          href: 'news.html' }
   ]
 };

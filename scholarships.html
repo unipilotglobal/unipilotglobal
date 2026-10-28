@@ -7,13 +7,14 @@
 <link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
 <section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Finder</span><h1>Find the scholarship that fits your story</h1><p>Type a name or pick filters. Counts show how many results each choice gives you. Every listing links to its official page.</p></div></section>
 <div class="w"><div class="fbox">
-<div class="sbox"><input id="q" type="search" placeholder="Type a scholarship, university, sponsor or country" autocomplete="off" aria-label="Search by name"><div class="sugg" id="sugg" hidden></div></div>
-<div class="facets" id="facets"></div>
+<div class="sbox"><input id="q" type="search" placeholder="Type a scholarship, university, sponsor or country" autocomplete="off" aria-label="Search by name"><button type="button" class="fbtn" id="fbtn2">Filters <i id="fcount" hidden></i></button><div class="sugg" id="sugg" hidden></div></div>
 <div class="row"><small>Quick picks</small><span id="presets" class="chips"></span></div>
 <div class="row" id="active"></div><div class="row sug" id="sug"></div></div>
 <div id="rg"></div>
 <div class="bar" style="margin-top:34px"><h2 id="cnt" style="font-size:1.6rem;margin:0"></h2><div style="display:flex;gap:10px;align-items:center"><select id="sort" style="width:auto" aria-label="Sort"></select><button class="btn sm out" id="share" type="button">Copy link</button></div></div>
 <div class="grid" id="grid"></div><p class="c" style="margin:30px 0 80px"><button class="btn out" id="more2" type="button">Show more</button></p></div>
+<div class="fdbg" id="fdbg" hidden></div>
+<aside class="fdrawer" id="fdrawer" aria-label="Filters" hidden><div class="fdh"><b>Filters</b><button type="button" id="fdx" aria-label="Close">&times;</button></div><div class="fdb"><div class="facets" id="facets"></div></div><div class="fdf"><button type="button" class="btn out sm" id="fdclear">Clear all</button><button type="button" class="btn sm" id="fdshow">Show results</button></div></aside>
 </main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
 <script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
 <script>
@@ -29,6 +30,7 @@ function buildFacets() {
 function sync() {
   facs().forEach(([k]) => { const d = $('.fd[data-k=' + k + ']'); if (!d) return; const sel = S[k], b = $('.fb', d); b.classList.toggle('has', sel.length > 0); $('b', b).textContent = sel.length ? lab(k, sel[0]) + (sel.length > 1 ? ' +' + (sel.length - 1) : '') : '';
     $$('.opt', d).forEach(el => { const cb = $('input', el), n = U0.filterList(U0.D.opps, Object.assign({}, S, { [k]: [cb.value] })).length; cb.checked = sel.includes(cb.value); $('i', el).textContent = n; el.classList.toggle('z', n === 0); el.hidden = k === 'country' && !sel.includes(cb.value) && (n === 0 || (S.region.length > 0 && !S.region.includes(U0.regionOf(cb.value)))); }); });
+  const nf = facs().reduce((a, [k]) => a + S[k].length, 0) + (S.video ? 1 : 0); $('#fcount').textContent = nf; $('#fcount').hidden = !nf;
   $('#vb').classList.toggle('has', S.video); $('#vb').setAttribute('aria-pressed', S.video);
 }
 function draw(rs) {
@@ -41,7 +43,7 @@ function draw(rs) {
   $('#sug').innerHTML = sg.length && list.length < 6 ? '<small>Try instead</small>' + sg.map(x => `<a href="#" data-k="${x[0][0]}" data-v="${U.esc(x[0][1])}">Remove ${U.esc(x[0][2])} (${x[1]} results)</a>`).join('') : '';
   $('#rg').innerHTML = S.region.length === 1 ? U.guideHTML(S.region[0]) : '';
   let c = list.length + (list.length === 1 ? ' opportunity found' : ' opportunities found');
-  if (S.subject.length && list.length) { const n = list.filter(o => S.subject.some(s => o.subjects.includes(s))).length; c += ` (${n} for this subject, ${list.length - n} open to all fields)`; } $('#cnt').textContent = c;
+  if (S.subject.length && list.length) { const n = list.filter(o => S.subject.some(s => o.subjects.includes(s))).length; c += ` (${n} for this subject, ${list.length - n} open to all fields)`; } $('#cnt').textContent = c; $('#fdshow').textContent = 'Show ' + list.length + (list.length === 1 ? ' result' : ' results');
   const cty = S.country.length ? S.country.join(', ') : '';
   $('#grid').innerHTML = list.length ? list.slice(0, shown).map(U.card).join('') : `<div class="empty"><h3>${S.type.includes('Internship') && !realInt() ? 'No internships are listed yet' : cty ? 'No listings for ' + U.esc(cty) + ' with these filters yet' : 'No matches for these filters'}</h3><p class="mute">Remove a filter, or tell us your goals. We add new internships and scholarships regularly, and we also help with direct university opportunities that are not listed here.</p><a class="btn" href="consultation.html">Ask an advisor</a> <button class="btn out" data-k="all" type="button">Clear all</button></div>`;
   $('#more2').hidden = list.length <= shown;
@@ -56,6 +58,7 @@ UP.boot('find', U => {
   U0 = U; $('#sort').innerHTML = U.optHTML('sort'); buildFacets();
   if (first) {
     first = false; const p = new URLSearchParams(location.search); FAC.forEach(f => { const v = p.get(f[0]); if (v) S[f[0]] = v.split('|'); }); S.q = p.get('q') || ''; S.video = p.get('video') === '1'; S.sort = p.get('sort') || 'rec'; $('#q').value = S.q;
+    U0.drawerInit(); $('#fdclear').onclick = () => { reset({}); draw(true); };
     document.addEventListener('click', e => {
       const fb = e.target.closest('.fb[aria-expanded]'); if (fb) { const pop = fb.nextElementSibling, open = pop.hidden; closePops(); pop.hidden = !open; fb.setAttribute('aria-expanded', open); return; }
       if (e.target.id === 'vb') { S.video = !S.video; draw(true); return; }

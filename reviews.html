@@ -6,6 +6,7 @@
 <link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
 <section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Student stories</span><h1>What students say</h1><p>Real words from students we have guided. Used our service? We would love to hear from you.</p></div></section>
+<nav class="subnav" aria-label="News and stories"><div class="w"><a href="news.html">News and events</a><a href="reviews.html" class="on">Student stories</a></div></nav>
 <section class="sec"><div class="w"><div class="three" id="rl"></div><div class="box" id="empty" style="max-width:640px" hidden><h3>Be the first to share your experience</h3><p class="mute">Every review is read by our team before it appears here, so what you see is genuine.</p><a class="btn" href="#rf">Write a review</a></div></div></section>
 <section class="sec mist"><div class="w" style="max-width:820px"><h2>Share your experience</h2><p class="lead">Tell future students what it was like. We publish reviews after checking them. Your email is never shown.</p><div id="out"></div>
 <form class="box f" id="rf"><div><label for="name">Your name *</label><input id="name" required></div><div><label for="country">Country</label><input id="country"></div><div><label for="email">Email (private) *</label><input id="email" type="email" required></div>
@@ -17,7 +18,7 @@
 <script src="config.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
 <script>
 let ready = false;
-UP.boot('reviews', U => {
+UP.boot('news', U => {
   const { C, $, esc, D } = U; $('#rl').innerHTML = D.reviews.map(U.reviewCard).join(''); U.car($('#rl')); $('#empty').hidden = D.reviews.length > 0;
   if (ready) return; ready = true;
   $('#rf').onsubmit = async e => {
