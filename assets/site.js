@@ -59,6 +59,7 @@
   const fmtDate = d => isoOk(d) ? new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : (d || '');
   const img = u => { u = String(u || '').trim(); if (!u) return ''; const m = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || u.match(/drive\.google\.com\/open\?id=([\w-]+)/); if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1280'; return /^(https?:|data:|\/)/i.test(u) || u.includes('/') ? u : 'images/' + u; };
   const A = x => Array.isArray(x) ? x : (x ? [x] : []);
+  let dbPilots = [], dbSig = '';   // approved pilots from the database (see loadDbPilots)
   function build(p) {
     p = p || {}; const raw = (p.opportunities && p.opportunities.length ? p.opportunities : BASE.opportunities) || [], by = new Map(), dupes = [];
     raw.forEach(r => { const nm = String(r.Name || '').trim(); if (!nm) return; const k = nm.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -94,6 +95,9 @@
     const TOP = [['IELTS','🎧','Reach the band score you need with practice for listening, reading, writing and speaking, plus test-day tips.'],['TOEFL','🗣️','Prepare for the TOEFL iBT: question types, timing, and how to improve each section.'],['SAT','📐','Plan your SAT preparation: what is tested, how it is scored, and how to practise.'],['GRE & GMAT','🧮','Understand the GRE and GMAT formats and build a study plan for your target score.'],['SOP','✍️','Write a Statement of Purpose that tells your story clearly: structure, examples and common mistakes.'],['CV & Resume','📄','Build an academic or professional CV that fits scholarship and university applications.'],['Recommendation Letters','💌','Choose referees, brief them well, and avoid the mistakes that weaken a letter.'],['Visa & Interview','🛂','Prepare for scholarship and visa interviews with typical questions and confident answers.']], tn = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
     const yid = u => { const m = String(u || '').match(/(?:youtu\.be\/|[?&]v=|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : ''; };
     const topics = (() => { const mp = new Map(TOP.map(t => [tn(t[0]), { name: t[0], icon: t[1], text: t[2], video: '', q: '' }])); (p.topics || []).forEach(t => { const nm = String(t.Topic || '').trim(); if (!nm) return; const k = tn(nm); if (/^(hidden|draft)$/i.test(String(t.Status || '').trim())) { mp.delete(k); return; } const o = mp.get(k) || { name: nm, icon: '📘', text: '', video: '', q: '' }; mp.set(k, { name: nm, icon: String(t.Icon || '').trim() || o.icon, text: String(t.Description || '').trim() || o.text, video: String(t.YouTube || '').trim(), q: String(t['Search terms'] || '').trim() }); }); return Array.from(mp.values()).map(t => Object.assign(t, { id: slug(t.name), vid: yid(t.video) })); })();
+    // pilots who joined through the dashboard and were approved by the team appear next to the ones in the Excel file
+    const taken = new Set(experts.map(e => e.id));
+    dbPilots.forEach(e => { if (!taken.has(e.id)) { taken.add(e.id); experts.push(e); } });
     return { opps, materials: mats, topics, seminars: sem, news, videos: vids, reviews, experts, visa, settings: p.settings || {}, guides: BASE.regionGuides || {}, dupes };
   }
   const UP = { C, $, $$, esc, LV, REGIONS, RCOL, RDESC, SUBJECTS, COUNTRIES, fmtDate, ytId, soon, img, A, count: 0, D: build(null) };
@@ -202,15 +206,34 @@
       d.innerHTML = `${top}<div class="in"><h2 style="margin:0 0 6px">${all.length ? 'We found ' + all.length + (all.length === 1 ? ' match' : ' matches') : 'No exact match yet'}</h2><p class="mute" style="margin:0 0 14px">${all.length ? 'Here are the strongest ones. Always confirm details on the official page.' : 'Try again with a wider choice, or ask our advisors.'}</p>${best.map(o => `<a class="amatch" href="opportunity.html?id=${encodeURIComponent(o.id)}"><b>${esc(o.name)}</b><span>${esc((o.sponsor || '').split(' - ')[0].split(':')[0])}</span></a>`).join('')}${all.length > 3 ? `<a class="btn sm" style="margin:6px 0 14px" href="scholarships.html?${qs.join('&')}">See all ${all.length} results</a>` : ''}${pl.length ? `<h3 style="margin:14px 0 8px;font-size:1rem">Pilots who can guide you</h3><div class="pgrid">${pl.map(UP.pilotMini).join('')}</div>` : ''}<div class="mact" style="margin-top:16px"><a class="btn" href="pilots.html">Talk to a pilot</a><button type="button" class="btn out" data-restart>Start again</button></div></div>`; };
     b.onclick = open; d.onclick = e => { if (e.target.closest('[data-x]') || e.target === d) { shut(); return; } const o = e.target.closest('.aopt'); if (o) { v[o.dataset.k] = o.dataset.v; i++; draw(); } else if (e.target.closest('[data-back]')) { i = Math.max(0, i - 1); draw(); } else if (e.target.closest('[data-restart]')) { i = 0; v = {}; draw(); } }; };
 
+  // ---- approved pilots from the database (public, read-only: only name, profile text and photo of ACTIVE pilots are ever sent)
+  const dbMap = r => {
+    const arr = v => Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [], id = String(r.slug || '').trim().toLowerCase();
+    if (!id || !/^[a-z0-9-]{2,60}$/.test(id) || !String(r.display_name || '').trim()) return null;
+    const ph = String(r.photo_url || '').trim(), li = String(r.linkedin_url || '').trim();
+    return { id, field: String(r.field || '').trim(), name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: '', about: String(r.bio || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '', alt: '', tags: arr(r.scholarships), edu: [], exp: [], langs: arr(r.languages), loc: '', studied: arr(r.studied_in), unis: arr(r.universities), helps: arr(r.helps_with), li: /^https:\/\//i.test(li) ? li : '', feat: false, fromDb: true };
+  };
+  async function loadDbPilots() {
+    if (!UP.accShown()) return [];
+    try {
+      const ctl = typeof AbortController === 'function' ? new AbortController() : null, t = setTimeout(() => { if (ctl) ctl.abort(); }, 6000);
+      const r = await fetch(C.supabaseUrl + '/rest/v1/v_pilot_cards?select=slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url&limit=300', { headers: { apikey: C.supabaseKey, Accept: 'application/json' }, signal: ctl ? ctl.signal : undefined });
+      clearTimeout(t); if (!r.ok) return []; const j = await r.json();
+      return Array.isArray(j) ? j.map(dbMap).filter(Boolean) : [];
+    } catch (e) { return []; }
+  }
+
   async function boot(active, render) {
     let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { }
     const run = p => { UP.D = build(p); applySettings(UP.D.settings); shell(active); render(UP); reveal(); };
     let first = null; try { first = raw ? JSON.parse(raw) : null; } catch (e) { }
+    const dbp = loadDbPilots();
     run(first);
     let src = null;
     if (C.sheetId) { try { src = await readSheets(C.sheetId); if (!src.opportunities.length) src = null; } catch (e) { src = null; } if (!src) console.warn('Google Sheet not loaded (is it shared as "Anyone with the link: Viewer"?). Using the Excel file instead.'); }
     if (!src && C.contentFile) { try { const r = await fetch(C.contentFile, { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); src = await readXlsx(await r.arrayBuffer()); } catch (e) { console.warn('Content file not loaded; using saved or built-in data.', e); } }
     if (src && src.opportunities.length) { const s = JSON.stringify(src); if (s !== raw) { try { localStorage.setItem(KEY, s); } catch (e) { } run(src); } if (UP.D.dupes.length) console.warn('Same-name rows were merged into one card:', UP.D.dupes); }
+    try { const pl = await dbp, sig = JSON.stringify(pl); if (sig !== dbSig && (pl.length || dbSig)) { dbSig = sig; dbPilots = pl; run(src || first); } } catch (e) { }
     if (C.scriptUrl) { try { const r = await fetch(C.scriptUrl + (C.scriptUrl.includes('?') ? '&' : '?') + 'action=count'), j = await r.json(); if (+j.count >= 0 && +j.count !== UP.count) { UP.count = +j.count; shell(active); render(UP); reveal(); } } catch (e) { } }
   }
   UP.boot = boot;
@@ -235,7 +258,7 @@
     $('#menu').onclick = e => { const o = $('#nav').classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', o); };
     $('#ftr').innerHTML = `<footer><div class="w"><div class="fg"><div><a class="flogo" href="index.html"><img src="images/logo-full.jpg" alt="UNIPILOT GLOBAL" width="120" height="96"></a><h4>${esc(C.brand)}</h4><p>${esc(C.tagline)}. We help students find scholarships abroad and prepare stronger applications.</p>
       ${true ? `<form id="subf" class="sub"><input type="email" name="e" required placeholder="Email for deadline alerts" aria-label="Email"><button class="btn sm" type="submit">Join</button></form><p id="subm" style="margin-top:8px"></p>` : ''}</div>
-      <div><h4>Explore</h4>${nav.map(n => `<div><a href="${n.href}">${esc(n.label)}</a></div>`).join('')}<div><a href="reviews.html">Share your experience</a></div><div><a href="legal.html">Legal &amp; Privacy</a></div>${UP.accLinks() ? `<div id="ftracc"><a href="account.html">${UP.sessUser() ? 'My account' : 'Sign in or create an account'}</a></div>` : ''}</div>
+      <div><h4>Explore</h4>${nav.map(n => `<div><a href="${n.href}">${esc(n.label)}</a></div>`).join('')}<div><a href="reviews.html">Share your experience</a></div><div><a href="legal.html">Legal &amp; Privacy</a></div>${UP.accLinks() ? `<div id="ftracc"><a href="account.html">${UP.sessUser() ? 'My account' : 'Sign in or create an account'}</a></div>${UP.sessUser() ? '' : '<div><a href="account.html?as=pilot">Pilot sign in</a></div>'}` : ''}</div>
       <div><h4>Continents</h4>${REGIONS.map(r => `<div><a href="scholarships.html?region=${encodeURIComponent(r[0])}">${esc(r[0])}</a></div>`).join('')}</div>
       <div><h4>Contact</h4>${w ? `<div><a href="${w}" target="_blank" rel="noopener">WhatsApp: ${esc(disp)}</a></div>` : ''}<div><a href="mailto:${esc(C.email)}">${esc(C.email)}</a></div>${so.map(s => `<div><a href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])}</a></div>`).join('')}</div></div>
       <p class="fine">Scholarship details are compiled from official programme information and change from year to year. Always confirm deadlines, amounts and requirements on the official website before you apply. ${esc(C.brand)} is an advisory service. We do not award scholarships and cannot guarantee admission or funding. &copy; ${new Date().getFullYear()} ${esc(C.brand)}</p></div></footer>${w ? `<a class="wafab" href="${w}" target="_blank" rel="noopener" aria-label="Chat with us on WhatsApp" title="Chat on WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.88 1.21 3.07.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35m-5.42 7.4h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.74.98 1-3.65-.24-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.88 9.89-9.88 2.64 0 5.12 1.03 6.99 2.9a9.82 9.82 0 0 1 2.89 6.99c0 5.45-4.44 9.88-9.88 9.88m8.41-18.3A11.82 11.82 0 0 0 12.05 0C5.5 0 .16 5.34.16 11.89c0 2.1.55 4.14 1.59 5.95L.06 24l6.3-1.65a11.88 11.88 0 0 0 5.68 1.45h.01c6.55 0 11.89-5.34 11.89-11.89 0-3.18-1.24-6.17-3.48-8.41Z"/></svg></a>` : ''}`;

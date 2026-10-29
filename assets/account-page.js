@@ -22,12 +22,15 @@
   const friendly = A.friendly;
 
   // ------------------------------------------------------------------ signed out
+  let as = params.get('as') === 'pilot' ? 'pilot' : 'student';          // which door the person chose: student or pilot
   function showAuth(tab) {
-    tab = tab || (params.get('mode') === 'signup' ? 'up' : 'in');
-    head(tab === 'up' ? 'Create your free account' : 'Sign in', tab === 'up' ? 'Save scholarships, get deadline alerts and book pilots when booking opens.' : 'Welcome back. Pick up where you left off.');
+    tab = tab || (params.get('mode') === 'signup' ? 'up' : 'in'); const pilot = as === 'pilot';
+    head(pilot ? (tab === 'up' ? 'Apply to become a pilot' : 'Pilot sign in') : (tab === 'up' ? 'Create your free account' : 'Sign in'), pilot ? (tab === 'up' ? 'Create your account and pilot profile. Our team checks every profile before it goes live.' : 'Guide students, set your prices and hours, and get paid.') : (tab === 'up' ? 'Save scholarships, get deadline alerts and book pilots when booking opens.' : 'Welcome back. Pick up where you left off.'));
     const err = hashErr ? '<p class="amsg bad">' + esc(decodeURIComponent(hashErr.replace(/\+/g, ' '))) + ' Please request a new link below.</p>' : '';
-    const gb = A.google ? '<button type="button" class="gbtn" id="gg">' + A.GICON + '<span>Continue with Google</span></button><p class="gnote">By continuing you agree to the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy notice</a> and <a href="legal.html" target="_blank" rel="noopener">Terms</a>.</p><div class="or"><span>or with your email</span></div>' : '';
-    root().innerHTML = '<div class="acol">' + gb + '<div class="atabs" role="tablist"><button type="button" class="chip' + (tab === 'in' ? ' on' : '') + '" data-tab="in" role="tab">Sign in</button><button type="button" class="chip' + (tab === 'up' ? ' on' : '') + '" data-tab="up" role="tab">Create account</button></div>' + err +
+    const gb = A.google && !(pilot && tab === 'up') ? '<button type="button" class="gbtn" id="gg">' + A.GICON + '<span>Continue with Google</span></button><p class="gnote">By continuing you agree to the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy notice</a> and <a href="legal.html" target="_blank" rel="noopener">Terms</a>.</p><div class="or"><span>or with your email</span></div>' : '';
+    const door = '<div class="dx-doors" role="tablist" aria-label="I am a"><button type="button" role="tab" aria-selected="' + !pilot + '" class="dx-door' + (pilot ? '' : ' on') + '" data-as="student"><b>I am a student</b><small>Find scholarships, track applications, talk to a pilot</small></button><button type="button" role="tab" aria-selected="' + pilot + '" class="dx-door' + (pilot ? ' on' : '') + '" data-as="pilot"><b>I am a pilot</b><small>Guide students, set your prices, get paid</small></button></div>';
+    const note = pilot && tab === 'in' ? '<p class="dx-hint">Did UniPilot Global send you a login? Enter it below. The first time, we will ask you to choose your own password.</p>' : '';
+    root().innerHTML = '<div class="acol">' + door + gb + '<div class="atabs" role="tablist"><button type="button" class="chip' + (tab === 'in' ? ' on' : '') + '" data-tab="in" role="tab">Sign in</button><button type="button" class="chip' + (tab === 'up' ? ' on' : '') + '" data-tab="up" role="tab">' + (pilot ? 'Apply as a pilot' : 'Create account') + '</button></div>' + err + note +
       (tab === 'in' ? `<form class="box f" id="fin" novalidate>
         <div class="w2"><label for="e1">Email</label><input id="e1" type="email" required autocomplete="email" inputmode="email"></div>
         <div class="w2"><label for="p1">Password</label><input id="p1" type="password" required autocomplete="current-password"></div>
@@ -40,8 +43,9 @@
         <div class="w2"><label for="p2">Password (at least 10 characters)</label><input id="p2" type="password" required minlength="10" autocomplete="new-password"></div>
         <div class="w2"><label style="font-weight:500"><input type="checkbox" id="k2" style="width:auto"> I have read the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy notice</a> and agree to the <a href="legal.html" target="_blank" rel="noopener">Terms</a>. *</label></div>
         <div class="w2"><label style="font-weight:500"><input type="checkbox" id="mk2" style="width:auto"> Email me deadline alerts and news (optional, you can change this any time)</label></div>
-        <div class="w2"><button class="btn lg" id="b2" type="submit">Create my account</button></div>
+        <div class="w2"><button class="btn lg" id="b2" type="submit">${pilot ? 'Create my pilot account' : 'Create my account'}</button></div>
         <p class="w2 amsg" id="m2" role="status" aria-live="polite"></p></form>`) + '</div>';
+    root().querySelectorAll('[data-as]').forEach(b => b.onclick = () => { as = b.dataset.as; showAuth(tab); });
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => showAuth(b.dataset.tab));
     const gg = $('#gg'); if (gg) gg.onclick = async () => {
       try { localStorage.setItem('up_pc_any', JSON.stringify({ v: VERSION, t: Date.now() })); } catch (x) { }
@@ -80,10 +84,10 @@
       if (!$('#k2').checked) return say('#m2', 'Please tick the box to agree to the Privacy notice and Terms.');
       const b = $('#b2'); busy(b, true, 'Creating your account…'); say('#m2', '');
       try {
-        const r = await sb.auth.signUp({ email: e, password: p, options: { data: { full_name: n }, emailRedirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) } });
+        const r = await sb.auth.signUp({ email: e, password: p, options: { data: as === 'pilot' ? { full_name: n, account_type: 'pilot' } : { full_name: n }, emailRedirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) } });
         if (r.error) throw r.error;
         try { localStorage.setItem('up_pc', JSON.stringify({ e: e.toLowerCase(), v: VERSION, mk })); } catch (x) { }
-        if (!r.data.session) { root().innerHTML = '<div class="acol"><div class="box c"><h3>Check your inbox</h3><p>We sent a confirmation link to <b>' + esc(e) + '</b>. Open it to finish creating your account. It can take a few minutes; please also look in your spam folder.</p><p class="mute"><a href="account.html">Back to sign in</a></p></div></div>'; head('Almost done', 'Confirm your email to finish.'); }
+        if (!r.data.session) { root().innerHTML = '<div class="acol"><div class="box c"><h3>Check your inbox</h3><p>We sent a confirmation link to <b>' + esc(e) + '</b>. Open it to finish creating your account' + (as === 'pilot' ? ' and start your pilot profile' : '') + '. It can take a few minutes; please also look in your spam folder.</p><p class="mute"><a href="account.html">Back to sign in</a></p></div></div>'; head('Almost done', 'Confirm your email to finish.'); }
       } catch (x) { say('#m2', friendly(x)); busy(b, false); }
     };
   }
@@ -102,37 +106,59 @@
   }
 
   // ------------------------------------------------------------------ signed in
-  const tzList = () => { try { if (Intl.supportedValuesOf) return Intl.supportedValuesOf('timeZone'); } catch (e) { } return ['UTC', 'Europe/Warsaw', 'Europe/Berlin', 'Europe/London', 'Asia/Dhaka', 'Asia/Kolkata', 'Asia/Dubai', 'America/New_York', 'America/Los_Angeles', 'Australia/Sydney']; };
-  const myTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } };
-  const fmt = d => { try { return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } };
-  const oppOf = ref => ((UP.D && UP.D.opps) || []).find(o => String(o.id) === String(ref));
-
   async function loadAll(uid) {
     const q = [
-      sb.from('profiles').select('full_name,phone,country,timezone,marketing_opt_in,deleted_at').eq('id', uid).maybeSingle(),
+      sb.from('profiles').select('full_name,phone,country,timezone,marketing_opt_in,onboarding,deleted_at').eq('id', uid).maybeSingle(),
       sb.from('user_roles').select('role').eq('user_id', uid),
       sb.from('consents').select('kind,version').eq('user_id', uid),
-      sb.from('saved_items').select('kind,ref,created_at').eq('user_id', uid).order('created_at', { ascending: false }),
-      sb.from('notification_prefs').select('email_deadlines,email_bookings,email_news').eq('user_id', uid).maybeSingle(),
-      sb.from('notifications').select('id,title,body,link,created_at,read_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(15)];
+      sb.from('pilots').select('*').eq('id', uid).maybeSingle()];
     const r = await Promise.all(q), bad = r.find(x => x.error); if (bad) throw bad.error;
-    return { pr: r[0].data, roles: (r[1].data || []).map(x => x.role), cons: r[2].data || [], saved: r[3].data || [], prefs: r[4].data, notes: r[5].data || [] };
+    return { pr: r[0].data, roles: (r[1].data || []).map(x => x.role), cons: r[2].data || [], pilot: r[3].data };
   }
 
-  async function showDash() {
+  const triedPilot = new Set();
+  async function showDash(view) {
     const uid = user.id; head('Your account', 'Loading…'); root().innerHTML = '<p class="mute">Loading your account…</p>';
-    let d; try { d = await loadAll(uid); } catch (e) { head('Your account', ''); root().innerHTML = '<div class="acol"><div class="box c"><h3>We could not load your account</h3><p>' + esc(friendly(e)) + '</p><button class="btn" id="rt" type="button">Try again</button> <button class="btn out" id="so" type="button">Sign out</button></div></div>'; $('#rt').onclick = showDash; $('#so').onclick = () => sb.auth.signOut(); return; }
+    let d; try { d = await loadAll(uid); } catch (e) { head('Your account', ''); root().innerHTML = '<div class="acol"><div class="box c"><h3>We could not load your account</h3><p>' + esc(friendly(e)) + '</p><button class="btn" id="rt" type="button">Try again</button> <button class="btn out" id="so" type="button">Sign out</button></div></div>'; $('#rt').onclick = () => showDash(view); $('#so').onclick = () => sb.auth.signOut(); return; }
     if (!d.pr) { head('Your account', ''); root().innerHTML = '<div class="acol"><div class="box c"><h3>Your profile is not ready yet</h3><p>Please refresh in a minute. If this stays, email us at ' + esc(C.email) + '.</p><button class="btn out" id="so" type="button">Sign out</button></div></div>'; $('#so').onclick = () => sb.auth.signOut(); return; }
     if (d.pr.deleted_at) { await sb.auth.signOut({ scope: 'local' }); return showAuth(); }
 
     // record the agreement that was shown at sign-up (ticked box, or "by continuing" under the Google button), otherwise ask for it
     if (!d.cons.some(c => c.kind === 'privacy')) {
       await A.settle(sb, user);
-      if (await A.consentOk(sb, uid)) return showDash();
+      if (await A.consentOk(sb, uid)) return showDash(view);
       return showGate(uid);
     }
     if (next) { A.go(next); return; }            // came here from a "Save" button: go back to where they were
-    draw(d);
+    // someone who applied from the pilot door: start their draft pilot profile once
+    const meta = user.user_metadata || {};
+    if (!d.pilot && meta.account_type === 'pilot' && !triedPilot.has(uid)) {
+      triedPilot.add(uid);
+      try { const r = await sb.rpc('fn_become_pilot', { p_name: d.pr.full_name || meta.full_name || '', p_headline: null, p_field: null }); if (!r.error) return showDash('pilot'); } catch (e) { }
+    }
+    // a pilot whose login was created by the team must choose their own password first
+    if (d.pr.onboarding && d.pr.onboarding.must_change_password) return showPwGate(d, view);
+    mountShell(d, view);
+  }
+
+  function showPwGate(d, view) {
+    head('Welcome to UniPilot Global', 'One quick step: choose your own password.');
+    root().innerHTML = `<div class="acol"><form class="box f" id="fpw" novalidate><p class="w2" style="margin:0">The password we gave you was only temporary. Please choose one that only you know (at least 10 characters).</p>
+      <div class="w2"><label for="np1">New password</label><input id="np1" type="password" required minlength="10" autocomplete="new-password"></div>
+      <div class="w2"><label for="np2">Repeat the new password</label><input id="np2" type="password" required autocomplete="new-password"></div>
+      <div class="w2"><button class="btn lg" id="npb" type="submit">Save and continue</button> <button class="btn out" id="nps" type="button">Sign out</button></div><p class="w2 amsg" id="npm" role="status" aria-live="polite"></p></form></div>`;
+    $('#nps').onclick = () => sb.auth.signOut();
+    $('#fpw').onsubmit = async ev => {
+      ev.preventDefault(); const a1 = $('#np1').value, a2 = $('#np2').value;
+      if (a1.length < 10) return say('#npm', 'Please choose a password with at least 10 characters.'); if (a1 !== a2) return say('#npm', 'The two passwords are not the same.');
+      const b = $('#npb'); busy(b, true, 'Saving…');
+      try {
+        const r = await sb.auth.updateUser({ password: a1 }); if (r.error) throw r.error;
+        const ob = Object.assign({}, d.pr.onboarding || {}); delete ob.must_change_password;
+        const u = await sb.from('profiles').update({ onboarding: ob }).eq('id', user.id); if (u.error) throw u.error;
+        showDash(view);
+      } catch (x) { say('#npm', friendly(x)); busy(b, false); }
+    };
   }
 
   const recordConsent = (uid, v, mk) => A.recordConsent(sb, uid, mk);
@@ -146,74 +172,66 @@
     $('#fg2').onsubmit = async ev => { ev.preventDefault(); if (!$('#g1').checked) return say('#gm', 'Please tick the box to continue.'); const b = $('#gb'); busy(b, true, 'Saving…'); const ok = await recordConsent(uid, VERSION, $('#g2').checked); if (ok) showDash(); else { say('#gm', 'Could not save your choice. Please try again.'); busy(b, false); } };
   }
 
-  function draw(d) {
-    const uid = user.id, first = (d.pr.full_name || '').split(' ')[0] || 'there', prefs = d.prefs || { email_deadlines: true, email_bookings: true, email_news: false };
-    const tzs = tzList(), curTz = d.pr.timezone && d.pr.timezone !== 'UTC' ? d.pr.timezone : myTz(), staff = d.roles.some(r => ['admin', 'finance', 'support'].includes(r));
-    head('Hello, ' + first, user.email || '');
-    let notes = d.notes, saved = d.saved;
-    const pills = d.roles.map(r => '<span class="pill' + (['admin', 'finance', 'support'].includes(r) ? ' gold' : '') + '">' + esc(LABEL[r] || r) + '</span>').join('');
-    root().innerHTML = `
-    <div class="adash">
-      <div class="panel" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><div>${pills}</div><button class="btn out sm" id="so" type="button">Sign out</button></div>
+  // ------------------------------------------------------------------ the dashboards (loaded only when needed)
+  const loaded = {};
+  const loadJs = src => loaded[src] || (loaded[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => { delete loaded[src]; rej(new Error('Could not load ' + src)); }; document.head.appendChild(el); }));
+  async function loadMods(view, staff, pilot) {
+    await loadJs('assets/dash-ui.js'); await loadJs('assets/dash-student.js');
+    if (view === 'pilot' || staff) await loadJs('assets/dash-pilot.js');
+    if (view === 'admin') await loadJs('assets/dash-admin.js');
+  }
+  const tzList = () => { try { if (Intl.supportedValuesOf) return Intl.supportedValuesOf('timeZone'); } catch (e) { } return ['UTC', 'Europe/Warsaw', 'Europe/Berlin', 'Europe/London', 'Asia/Dhaka', 'Asia/Kolkata', 'Asia/Dubai', 'America/New_York', 'America/Los_Angeles', 'Australia/Sydney']; };
+  const myTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } };
+  const DASH_LINK = /^\/?dashboard(?:\/(pilot|admin))?(?:#(\w+))?$/;
 
-      <div class="panel"><h2>Saved scholarships</h2><div id="sv"></div></div>
-
-      <div class="panel"><h2>Notifications</h2><div id="nt"></div></div>
-
-      <div class="panel"><h2>My pilot sessions</h2><p class="mute" style="margin:0">Booking a pilot opens soon. Your upcoming and past sessions, receipts and reviews will appear here.</p></div>
-
-      <form class="panel f" id="fpr" novalidate><h2 style="grid-column:1/-1;border:0;padding:0;margin:0 0 6px">Your profile</h2>
-        <div><label for="pn">Full name</label><input id="pn" required autocomplete="name" value="${esc(d.pr.full_name)}"></div>
-        <div><label for="pp">WhatsApp or phone (optional)</label><input id="pp" autocomplete="tel" placeholder="+48 …" value="${esc(d.pr.phone || '')}"></div>
-        <div><label for="pc">Country (optional)</label><input id="pc" autocomplete="country-name" value="${esc(d.pr.country || '')}"></div>
-        <div><label for="pt">Time zone</label><select id="pt">${tzs.map(z => '<option' + (z === curTz ? ' selected' : '') + '>' + esc(z) + '</option>').join('')}</select></div>
-        <div class="w2"><label style="font-weight:500"><input type="checkbox" id="pm" style="width:auto"${d.pr.marketing_opt_in ? ' checked' : ''}> Email me news and offers (optional)</label></div>
-        <div class="w2"><button class="btn" id="pb" type="submit">Save profile</button></div><p class="w2 amsg" id="pm2" role="status" aria-live="polite"></p></form>
-
-      <div class="panel"><h2>Email alerts</h2><p class="mute" style="margin:0 0 8px">Choose what we may email you. Changes save instantly.</p>
-        <label class="ck"><input type="checkbox" data-pref="email_deadlines"${prefs.email_deadlines ? ' checked' : ''}> Deadline reminders for scholarships I saved</label>
-        <label class="ck"><input type="checkbox" data-pref="email_bookings"${prefs.email_bookings ? ' checked' : ''}> Messages about my pilot sessions</label>
-        <label class="ck"><input type="checkbox" data-pref="email_news"${prefs.email_news ? ' checked' : ''}> News and new free materials</label><p class="amsg" id="pfm" role="status" aria-live="polite"></p></div>
-
-      <div class="panel"><h2>Become a pilot</h2><p style="margin:0 0 12px">Won a scholarship or studied abroad? Pilots guide students one to one and are paid for their time. Tell us about yourself and we will send you the next steps.</p><a class="btn out" href="mailto:${esc(C.email)}?subject=Pilot%20application">Apply to become a pilot</a></div>
-      ${staff ? '<div class="panel"><h2>Staff tools</h2><p class="mute" style="margin:0">You have staff access. Admin screens (approvals, money overview, messages to students) arrive in the next release.</p></div>' : ''}
-
-      <div class="panel"><h2>Your data and privacy</h2><p class="mute" style="margin:0 0 12px">You can download everything we hold about you, or delete your account. <a href="legal.html#privacy">Read the Privacy notice</a>.</p>
-        <button class="btn out sm" id="dl" type="button">Download my data</button> <button class="btn out sm" id="dx" type="button" style="color:#b3261e">Delete my account</button>
-        <div id="dz" hidden style="margin-top:16px"><p style="margin:0 0 8px"><b>This cannot be undone.</b> Your saved items, alerts and profile details are erased, future sessions are cancelled, and your login email is removed. Records that the law requires us to keep (payments) stay without your name.</p>
-        <label for="dt">Type DELETE to confirm</label><input id="dt" autocomplete="off" style="max-width:240px"> <button class="btn sm" id="dc" type="button" style="background:#b3261e;color:#fff;margin-top:8px">Delete my account for good</button></div><p class="amsg" id="dm" role="status" aria-live="polite"></p></div>
-    </div>`;
-
-    const drawSaved = () => { $('#sv').innerHTML = saved.length ? saved.map(s => { const o = s.kind === 'scholarship' ? oppOf(s.ref) : null; return '<div class="srow"><div>' + (o ? '<a href="opportunity.html?id=' + encodeURIComponent(o.id) + '"><b>' + esc(o.name) + '</b></a><small>Deadline: ' + esc(o.deadline || 'see official page') + '</small>' : '<b>' + esc(s.ref) + '</b><small>' + (s.kind === 'scholarship' ? 'No longer listed' : esc(s.kind)) + '</small>') + '</div><button type="button" class="btn out sm" data-rm="' + esc(s.kind + ':' + s.ref) + '">Remove</button></div>'; }).join('') : '<p class="mute" style="margin:0">Nothing saved yet. Open any scholarship and press <b>Save</b>. <a href="scholarships.html">Find scholarships &rarr;</a></p>'; };
-    const drawNotes = () => { const un = notes.filter(n => !n.read_at).length; $('#nt').innerHTML = notes.length ? '<div class="nrow-h">' + (un ? '<b>' + un + ' new</b> <button type="button" class="btn out sm" id="mr">Mark all as read</button>' : '<span class="mute">All caught up</span>') + '</div>' + notes.map(n => { const l = A.safeNext(String(n.link || '').replace(/^\//, '')); return '<div class="nrow' + (n.read_at ? '' : ' new') + '"><b>' + esc(n.title) + '</b>' + (n.body ? '<p>' + esc(n.body) + '</p>' : '') + '<small>' + esc(fmt(n.created_at)) + '</small>' + (l ? ' <a href="' + esc(l) + '">Open</a>' : '') + '</div>'; }).join('') : '<p class="mute" style="margin:0">No notifications yet. Deadline reminders for scholarships you save will appear here.</p>'; const mr = $('#mr'); if (mr) mr.onclick = async () => { mr.disabled = true; const r = await sb.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', uid).is('read_at', null); if (!r.error) { notes = notes.map(n => n.read_at ? n : Object.assign({}, n, { read_at: new Date().toISOString() })); drawNotes(); } else mr.disabled = false; }; };
-    drawSaved(); drawNotes(); redraw = drawSaved;
-    $('#sv').onclick = async ev => { const b = ev.target.closest('[data-rm]'); if (!b) return; const k = b.dataset.rm, i = k.indexOf(':'); b.disabled = true; const r = await sb.from('saved_items').delete().eq('user_id', uid).eq('kind', k.slice(0, i)).eq('ref', k.slice(i + 1)); if (!r.error) { saved = saved.filter(s => s.kind + ':' + s.ref !== k); drawSaved(); } else b.disabled = false; };
-
-    $('#so').onclick = () => sb.auth.signOut();
-    $('#fpr').onsubmit = async ev => {
-      ev.preventDefault(); const n = $('#pn').value.trim(), ph = $('#pp').value.trim(), co = $('#pc').value.trim(), tz = $('#pt').value;
-      if (n.length < 2) return say('#pm2', 'Please enter your full name.');
-      if (ph && !/^[+\d][\d\s\-()]{6,24}$/.test(ph)) return say('#pm2', 'Please enter a phone number with the country code, like +48 123 456 789.');
-      const b = $('#pb'); busy(b, true, 'Saving…');
-      const r = await sb.from('profiles').update({ full_name: n, phone: ph || null, country: co || null, timezone: tz, marketing_opt_in: $('#pm').checked }).eq('id', uid);
-      busy(b, false); if (r.error) return say('#pm2', friendly(r.error)); say('#pm2', 'Saved.', true); head('Hello, ' + (n.split(' ')[0] || 'there'), user.email || '');
-    };
-    root().querySelectorAll('[data-pref]').forEach(c => c.onchange = async () => { const r = await sb.from('notification_prefs').update({ [c.dataset.pref]: c.checked }).eq('user_id', uid); if (r.error) { c.checked = !c.checked; say('#pfm', friendly(r.error)); } else say('#pfm', 'Saved.', true); });
-    $('#dl').onclick = async () => {
-      const b = $('#dl'); busy(b, true, 'Preparing…');
-      try { const r = await sb.rpc('fn_export_my_data'); if (r.error) throw r.error; const blob = new Blob([JSON.stringify(r.data, null, 2)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'unipilot-my-data.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); say('#dm', 'Your data file was downloaded.', true); } catch (e) { say('#dm', friendly(e)); }
+  function privacyHTML() {
+    return `<div class="dx-card"><h3>Your data and privacy</h3><p class="mute" style="margin:0 0 12px">You can download everything we hold about you, or delete your account. <a href="legal.html#privacy">Read the Privacy notice</a>.</p>
+      <button class="btn out sm" id="dl" type="button">Download my data</button> <button class="btn out sm" id="dx" type="button" style="color:#b3261e">Delete my account</button>
+      <div id="dz" hidden style="margin-top:16px"><p style="margin:0 0 8px"><b>This cannot be undone.</b> Your saved items, alerts and profile details are erased, future sessions are cancelled, and your login email is removed. Records that the law requires us to keep (payments) stay without your name.</p>
+      <label for="dt">Type DELETE to confirm</label><input id="dt" autocomplete="off" style="max-width:240px"> <button class="btn sm" id="dc" type="button" style="background:#b3261e;color:#fff;margin-top:8px">Delete my account for good</button></div><p class="amsg" id="dm" role="status" aria-live="polite"></p></div>`;
+  }
+  function wirePrivacy(r) {
+    const q = s => r.querySelector(s); if (!q('#dl')) return;
+    q('#dl').onclick = async () => {
+      const b = q('#dl'); busy(b, true, 'Preparing…');
+      try { const x = await sb.rpc('fn_export_my_data'); if (x.error) throw x.error; const blob = new Blob([JSON.stringify(x.data, null, 2)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'unipilot-my-data.json'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); say('#dm', 'Your data file was downloaded.', true); } catch (e) { say('#dm', friendly(e)); }
       busy(b, false);
     };
-    $('#dx').onclick = () => { $('#dz').hidden = !$('#dz').hidden; };
-    $('#dc').onclick = async () => {
-      if ($('#dt').value.trim() !== 'DELETE') return say('#dm', 'Please type DELETE in capital letters to confirm.');
-      const b = $('#dc'); busy(b, true, 'Deleting…');
+    q('#dx').onclick = () => { q('#dz').hidden = !q('#dz').hidden; };
+    q('#dc').onclick = async () => {
+      if (q('#dt').value.trim() !== 'DELETE') return say('#dm', 'Please type DELETE in capital letters to confirm.');
+      const b = q('#dc'); busy(b, true, 'Deleting…');
       try {
-        const r = await sb.rpc('fn_delete_my_account'); if (r.error) throw r.error;
+        const x = await sb.rpc('fn_delete_my_account'); if (x.error) throw x.error;
         finished = true; await sb.auth.signOut({ scope: 'local' }); try { localStorage.removeItem('up_pc'); } catch (e) { }
         head('Account deleted', 'Your account and sign-in were removed.'); root().innerHTML = '<div class="acol"><div class="box c"><h3>Your account was deleted</h3><p>Thank you for using ' + esc(C.brand) + '. You are welcome back any time.</p><a class="btn" href="index.html">Back to the home page</a></div></div>';
       } catch (e) { say('#dm', friendly(e)); busy(b, false); }
     };
+  }
+
+  let curApi = null;
+  function mountShell(d, want) {
+    const uid = user.id, staff = d.roles.some(r => ['admin', 'finance', 'support'].includes(r)), views = [['student', 'Student']];
+    if (d.pilot) views.push(['pilot', 'Pilot']); if (staff) views.push(['admin', 'Admin']);
+    let saved = ''; try { saved = localStorage.getItem('up_view') || ''; } catch (e) { }
+    let cur = views.some(v => v[0] === want) ? want : views.some(v => v[0] === saved) ? saved : staff ? 'admin' : d.pilot ? 'pilot' : 'student';
+    const pr = d.pr, ctx = { sb, uid, user, A, C, roles: d.roles, pr, pilot: d.pilot, friendly, privacy: { html: privacyHTML, wire: wirePrivacy }, tzList, myTz, firstTab: null,
+      refreshHead: () => { const f = (pr.full_name || '').split(' ')[0] || 'there'; head('Hello, ' + f, user.email || ''); const n = $('.dx-who b'); if (n) n.textContent = pr.full_name || user.email || ''; const av = $('.dx-av'); if (av) av.textContent = (pr.full_name || user.email || '?').trim().charAt(0).toUpperCase(); },
+      reload: v => showDash(v), signOut: () => sb.auth.signOut(),
+      linkOK: l => { l = String(l || ''); return DASH_LINK.test(l) || (!!A.safeNext(l.replace(/^\//, '')) && l.replace(/^\//, '') !== 'account.html'); },
+      openLink: l => { l = String(l || ''); const m = l.match(DASH_LINK); if (m) { const v = m[1] || 'student', t = { applications: 'applications', reviews: 'sessions' }[m[2]] || null; return show(views.some(x => x[0] === v) ? v : 'student', t); } const n = A.safeNext(l.replace(/^\//, '')); if (n) A.go(n); } };
+    root().innerHTML = '<div class="dxr"><div class="dx-top"><div class="dx-who"><span class="dx-av" aria-hidden="true"></span><div><b></b><small>' + esc(user.email || '') + '</small></div></div>' + (views.length > 1 ? '<div class="dx-switch" role="tablist" aria-label="Switch dashboard">' + views.map(v => '<button type="button" role="tab" class="dx-sw" data-v="' + v[0] + '">' + v[1] + '</button>').join('') + '</div>' : '') + '<button class="btn out sm" id="so" type="button">Sign out</button></div><div id="dxView"></div></div>';
+    ctx.refreshHead(); $('#so').onclick = () => sb.auth.signOut();
+    async function show(v, tab) {
+      cur = v; try { localStorage.setItem('up_view', v); } catch (e) { }
+      root().querySelectorAll('.dx-sw').forEach(b => { const on = b.dataset.v === v; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+      curApi = null; const host = $('#dxView'); host.innerHTML = '<div class="dx-card"><div class="dx-skel"></div><div class="dx-skel s"></div></div>'; ctx.firstTab = tab || null;
+      try { await loadMods(v, staff); const fn = UP.dash && UP.dash[v]; if (!fn) throw new Error('This part of the dashboard is missing. Please refresh the page.'); host.innerHTML = ''; curApi = fn(host, ctx); }
+      catch (e) { host.innerHTML = '<div class="dx-card dx-err"><h3>We could not open this dashboard</h3><p>' + esc(friendly(e)) + '</p><button class="btn sm" type="button" id="rtv">Try again</button></div>'; $('#rtv').onclick = () => show(v, tab); }
+      ctx.firstTab = null;
+    }
+    root().querySelectorAll('.dx-sw').forEach(b => b.onclick = () => show(b.dataset.v));
+    show(cur);
   }
 
   // ------------------------------------------------------------------ start
@@ -238,5 +256,5 @@
     });
     route();
   }
-  UP.boot('account', () => { if (mounted) { if (redraw) redraw(); return; } mounted = true; start(); });
+  UP.boot('account', () => { if (mounted) { if (redraw) redraw(); return; } mounted = true; redraw = () => { if (!curApi) return; try { const c = curApi.current; if (['overview', 'matches', 'saved', 'applications'].includes(c) && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('.dx-main'))) curApi.refresh(); } catch (e) { } }; start(); });
 })();
