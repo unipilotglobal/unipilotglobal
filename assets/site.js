@@ -115,6 +115,28 @@
   UP.loadAcc = () => UP.acc ? Promise.resolve(UP.acc) : (UP.accP = UP.accP || new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/account.js'; sc.onload = () => res(UP.acc); sc.onerror = () => { UP.accP = null; rej(new Error('Sign-in code could not load')); }; document.head.appendChild(sc); }));
   const UICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>';
   // the booking calendar is a separate file, loaded only when someone opens a booking
+  // ---- prices in taka: a small "≈ ৳6,575" next to every price in another currency. Rates are public market rates saved by the server once an hour (the source updates daily).
+  UP.fx = (function () {
+    const KEY = 'up_fx_1', FRESH = 3600000, MAX_AGE = 72 * 3600000; let rates = null, pending = null;
+    const keep = j => { try { localStorage.setItem(KEY, JSON.stringify(j)); } catch (e) { } };
+    const cached = () => { try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); return j && j.r && typeof j.t === 'number' ? j : null; } catch (e) { return null; } };
+    const usable = j => !!(j && j.r && Date.now() - j.t < FRESH * 6);
+    const parse = rows => { const r = {}; let oldest = Date.now(); (rows || []).forEach(x => { const v = Number(x.bdt_per_unit), t = Date.parse(x.fetched_at); if (/^[A-Z]{3}$/.test(x.base) && v > 0 && t && Date.now() - t < MAX_AGE) { r[x.base] = v; oldest = Math.min(oldest, t); } }); return Object.keys(r).length ? { r, t: Date.now(), src: oldest } : null; };
+    function ready() {
+      if (rates) return Promise.resolve(rates);
+      const c = cached(); if (c && Date.now() - c.t < FRESH) { rates = c; return Promise.resolve(rates); }
+      if (!C.supabaseUrl || !C.supabaseKey) return Promise.resolve(null);
+      return pending = pending || fetch(String(C.supabaseUrl).replace(/\/$/, '') + '/rest/v1/fx_rates?select=base,bdt_per_unit,fetched_at', { headers: { apikey: C.supabaseKey, Authorization: 'Bearer ' + C.supabaseKey } })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('rates')), e => Promise.reject(e)).then(rows => { const p = parse(rows); if (p) { rates = p; keep(p); } else rates = null; return rates; })
+        .catch(() => { rates = usable(c) ? c : null; return rates; }).then(x => { pending = null; return x; });
+    }
+    const rate = cur => { const c = String(cur || '').toUpperCase(); if (c === 'BDT') return null; const R = rates || cached(); return R && R.r && R.r[c] > 0 && Date.now() - R.t < FRESH * 6 ? R.r[c] : null; };
+    const bdt = (cents, cur) => { const r = rate(cur); return r && cents > 0 ? Math.ceil(cents / 100 * r) : null; };
+    const fmt = n => '৳' + new Intl.NumberFormat('en-IN').format(n);
+    const text = (cents, cur) => { const n = bdt(cents, cur); return n ? '≈ ' + fmt(n) : ''; };
+    const html = (cents, cur) => { const n = bdt(cents, cur); return n ? '<span class="fx" title="About ' + esc(fmt(n)) + ' at today\'s rate (1 ' + esc(String(cur).toUpperCase()) + ' = ৳' + esc(rate(cur).toFixed(2)) + '). The exact amount is shown when you pay.">≈ ' + esc(fmt(n)) + '</span>' : ''; };
+    return { ready, rate, bdt, text, html, fmt };
+  })();
   UP.loadBook = () => UP.book && UP.book.open ? Promise.resolve(UP.book) : (UP.bookP = UP.bookP || UP.loadAcc().then(() => new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/booking.js'; sc.onload = () => res(UP.book); sc.onerror = () => { UP.bookP = null; rej(new Error('Booking code could not load')); }; document.head.appendChild(sc); })));
   UP.bookOpen = o => UP.loadBook().then(b => b.open(o));
   UP.signHTML = () => { const u = UP.sessUser(); if (!UP.accLinks()) return ''; const nm = u && ((u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || u.email) || '', ini = String(nm).trim().slice(0, 1).toUpperCase() || '&#9679;';

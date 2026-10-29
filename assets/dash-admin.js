@@ -23,10 +23,13 @@
         sb.rpc('fn_admin_business').then(r => r.error ? null : r.data, () => null),                                              // null when the booking update is not installed yet: the card is simply hidden
         sb.from('app_settings').select('value').eq('key', 'payments_enabled').then(r => r.error || !r.data || !r.data.length ? null : (r.data[0].value === true || r.data[0].value === 'true'), () => null)]);
       stats = s; api.badge('pilots', s.pilots.pending);
+      if (isFin && biz) api.badge('payments', (biz.manual_to_check || 0) + (biz.manual_refunds || 0));
       const days = s.signups_by_day || [], mx = Math.max(3, ...days.map(d => d.n)), bw = 600 / Math.max(days.length, 1), tot = days.reduce((a, d) => a + d.n, 0);
       const chart = '<svg viewBox="0 0 600 150" class="dx-chart" role="img" aria-label="New registrations per day for the last 30 days: ' + tot + ' in total">' + [0, 1, 2, 3].map(i => '<line x1="0" x2="600" y1="' + (10 + i * 40) + '" y2="' + (10 + i * 40) + '" class="g"/>').join('') + days.map((d, i) => { const h = Math.round(d.n / mx * 120); return '<g><rect x="' + (i * bw + 2) + '" y="' + (130 - h) + '" width="' + Math.max(bw - 4, 2) + '" height="' + Math.max(h, d.n ? 2 : 0) + '" rx="2"><title>' + esc(U.fmtDate(d.day)) + ': ' + d.n + ' new</title></rect></g>'; }).join('') + '<text x="0" y="147" class="t">' + esc(days.length ? U.fmtDate(days[0].day) : '') + '</text><text x="600" y="147" text-anchor="end" class="t">Today</text><text x="598" y="8" text-anchor="end" class="t">' + mx + '</text></svg>';
       const att = []; if (s.pilots.pending) att.push(['<b>' + s.pilots.pending + '</b> pilot profile' + (s.pilots.pending > 1 ? 's are' : ' is') + ' waiting for your approval', 'Review', 'pilots', 'pending']);
       if (s.bookings.requested) att.push(['<b>' + s.bookings.requested + '</b> booking' + (s.bookings.requested > 1 ? 's' : '') + ' waiting for payment', '', '', '']); if (s.reviews_waiting) att.push(['<b>' + s.reviews_waiting + '</b> review' + (s.reviews_waiting > 1 ? 's' : '') + ' waiting for a check', '', '', '']);
+      if (isFin && biz && biz.manual_to_check) att.push(['<b>' + biz.manual_to_check + '</b> payment' + (biz.manual_to_check > 1 ? 's' : '') + ' sent by bKash or bank ' + (biz.manual_to_check > 1 ? 'are' : 'is') + ' waiting for you to check', 'Check now', 'payments', '']);
+      if (isFin && biz && biz.manual_refunds) att.push(['<b>' + biz.manual_refunds + '</b> refund' + (biz.manual_refunds > 1 ? 's' : '') + ' to send back by hand (bKash or bank)', 'See', 'payments', '']);
       if (biz && biz.refunds_waiting) att.push(['<b>' + biz.refunds_waiting + '</b> refund' + (biz.refunds_waiting > 1 ? 's are' : ' is') + ' waiting to be sent to a card. The system tries again every 15 minutes.', '', '', '']);
       if (s.unconfirmed_emails) att.push(['<b>' + s.unconfirmed_emails + '</b> ' + (s.unconfirmed_emails > 1 ? 'people have' : 'person has') + ' not confirmed their email yet', 'See who', 'people', '']);
       el.innerHTML = '<div class="dx-kpis">' + U.kpi('Registered people', s.people) + U.kpi('Students', s.students) + U.kpi('Pilots live', s.pilots.active, s.pilots.total + ' pilots in total') + U.kpi('New today', s.new_today, '', s.new_today ? 'hot' : '') + U.kpi('New in 7 days', s.new_7d) + U.kpi('New in 30 days', s.new_30d) + '</div>' +
@@ -110,6 +113,94 @@
     }
 
     // ---------------------------------------------------------------- messages to everyone
+    // ---------------------------------------------------------------- payments sent by bKash / Nagad / Rocket / bank (finance and admin)
+    const PM = { bkash: 'bKash', nagad: 'Nagad', rocket: 'Rocket', bank: 'Bank transfer' };
+    const bdt = n => '৳' + new Intl.NumberFormat('en-IN').format(Number(n) || 0);
+    const REJECT_WHY = ['Transaction ID not found in our account', 'The amount received is less than required', 'The money was sent to a different number', 'This transaction ID belongs to a different payment'];
+    const uniq = a => [...new Set(a.filter(Boolean))];
+    const copyBtn = (t, label) => '<button type="button" class="btn out sm" data-copy="' + esc(t) + '">' + (label || 'Copy') + '</button>';
+    async function tPayments(el, api) {
+      const [queue, hist, rates, sett, refunds] = await Promise.all([
+        run(sb.from('manual_payments').select('id,booking_id,student_id,method,price_cents,currency,rate,amount_bdt,trx_id,sender,sent_bdt,submitted_at').eq('status', 'submitted').order('submitted_at', { ascending: true })),
+        run(sb.from('manual_payments').select('id,booking_id,student_id,method,status,amount_bdt,trx_id,reviewed_at,review_note').in('status', ['approved', 'rejected']).not('reviewed_at', 'is', null).order('reviewed_at', { ascending: false }).limit(12)),
+        sb.from('fx_rates').select('base,bdt_per_unit,fetched_at').in('base', ['EUR', 'USD']).then(r => r.data || [], () => []),
+        isAdmin ? sb.from('app_settings').select('key,value').in('key', ['manual_pay_enabled', 'manual_review_hours', 'manual_min_hours', 'manual_accounts']).then(r => r.data || [], () => []) : Promise.resolve([]),
+        run(sb.from('payments').select('id,booking_id,student_id,provider,provider_ref,amount_cents,currency,created_at').eq('status', 'refunded').is('refund_issued_at', null).neq('provider', 'stripe'))]);
+      api.badge('payments', queue.length + refunds.length);
+      const all = [...queue, ...hist, ...refunds], stIds = uniq(all.map(x => x.student_id)), bIds = uniq(all.map(x => x.booking_id)), rIds = refunds.map(x => x.id);
+      const [prof, bks, rmp] = await Promise.all([stIds.length ? run(sb.from('profiles').select('id,full_name').in('id', stIds)) : [], bIds.length ? run(sb.from('bookings').select('id,starts_at,service_id,pilot_id,status').in('id', bIds)) : [], rIds.length ? run(sb.from('manual_payments').select('payment_id,method,sender,amount_bdt,trx_id').in('payment_id', rIds)) : []]);
+      const [svs, pls] = await Promise.all([bks.length ? run(sb.from('pilot_services').select('id,title').in('id', uniq(bks.map(b => b.service_id)))) : [], bks.length ? run(sb.from('pilots').select('id,display_name').in('id', uniq(bks.map(b => b.pilot_id)))) : []]);
+      const nm = {}, bk = {}, sv = {}, pl = {}, rm = {}; prof.forEach(p => nm[p.id] = p.full_name || 'Student'); bks.forEach(b => bk[b.id] = b); svs.forEach(s => sv[s.id] = s.title); pls.forEach(p => pl[p.id] = p.display_name); rmp.forEach(m => rm[m.payment_id] = m);
+      const what = id => { const b = bk[id]; return b ? esc(sv[b.service_id] || 'Session') + ' with ' + esc(pl[b.pilot_id] || 'pilot') + ' · ' + esc(U.fmtDT(b.starts_at)) : 'Session'; };
+      const S = {}; sett.forEach(x => S[x.key] = x.value); const on = S.manual_pay_enabled === true || S.manual_pay_enabled === 'true';
+      let accounts = Array.isArray(S.manual_accounts) ? S.manual_accounts : []; const acc = m => accounts.find(a => a && a.method === m) || {};
+      const fresh = rates.filter(r => Date.now() - Date.parse(r.fetched_at) < 72 * 36e5).sort((a, b) => a.base < b.base ? -1 : 1);
+      const rateLine = fresh.length ? fresh.map(r => '1 ' + esc(r.base) + ' = ৳' + Number(r.bdt_per_unit).toFixed(2)).join(' · ') + ' <span class="mute">(updated ' + esc(U.ago(fresh[0].fetched_at)) + ')</span>' : '<b style="color:#b3261e">No recent exchange rate.</b> Students cannot pay in taka until the “update-rates” server function has run (see the guide).';
+      const queueCard = q => {
+        const diff = q.sent_bdt !== q.amount_bdt;
+        return '<div class="dx-app" data-c="' + esc(q.id) + '"><div class="dx-app-h"><div><b>' + esc(nm[q.student_id] || 'Student') + '</b><small>' + what(q.booking_id) + '</small></div><div class="dx-item-side"><span class="pill warn">' + esc(PM[q.method] || q.method) + '</span><span class="mute">' + esc(U.ago(q.submitted_at)) + '</span></div></div>' +
+          '<div class="pay-check"><div><small>Amount to receive</small><b>' + bdt(q.amount_bdt) + '</b><span class="mute">' + esc(U.money(q.price_cents, q.currency)) + ' at ৳' + Number(q.rate).toFixed(2) + '</span></div><div><small>Student says they sent</small><b' + (diff ? ' class="bad"' : '') + '>' + bdt(q.sent_bdt) + '</b>' + (diff ? '<span class="bad">Different from the amount to receive</span>' : '') + '</div>' +
+          '<div><small>Transaction ID</small><b><code>' + esc(q.trx_id) + '</code></b>' + copyBtn(q.trx_id) + '</div><div><small>' + (q.method === 'bank' ? 'Bank and account holder' : 'Sent from') + '</small><b>' + esc(q.sender || '') + '</b></div></div>' +
+          '<div class="dx-row bk-acts"><button type="button" class="btn sm" data-ok>Approve: I see the money</button><button type="button" class="btn out sm" data-no>Reject…</button></div></div>';
+      };
+      const refundCard = p => { const m = rm[p.id] || {}; return '<div class="dx-app" data-rp="' + esc(p.id) + '"><div class="dx-app-h"><div><b>' + esc(nm[p.student_id] || 'Student') + '</b><small>' + what(p.booking_id) + '</small></div><div class="dx-item-side"><span class="pill warn">' + esc(PM[m.method || p.provider] || p.provider) + '</span></div></div>' +
+        '<div class="pay-check"><div><small>Send back</small><b>' + (m.amount_bdt ? bdt(m.amount_bdt) : esc(U.money(p.amount_cents, p.currency))) + '</b></div><div><small>' + (m.method === 'bank' ? 'To (bank and holder)' : 'To the number') + '</small><b>' + esc(m.sender || '(not recorded)') + '</b>' + (m.sender ? copyBtn(m.sender) : '') + '</div><div><small>Original transaction ID</small><b><code>' + esc(m.trx_id || p.provider_ref) + '</code></b></div></div>' +
+        '<div class="dx-row bk-acts"><button type="button" class="btn sm" data-sent>I have sent it</button><span class="mute">The student is told when you press this.</span></div></div>'; };
+      const histRow = h => '<div class="dx-item"><div class="dx-item-main"><b>' + esc(nm[h.student_id] || 'Student') + ' · ' + bdt(h.amount_bdt) + '</b><small>' + esc(PM[h.method] || h.method) + ' · ' + esc(h.trx_id || '') + (h.review_note ? ' · ' + esc(h.review_note) : '') + '</small></div><div class="dx-item-side"><span class="pill ' + (h.status === 'approved' ? 'ok' : 'bad') + '">' + (h.status === 'approved' ? 'Approved' : 'Rejected') + '</span><span class="mute">' + esc(U.ago(h.reviewed_at)) + '</span></div></div>';
+      const accRow = m => { const a = acc(m); return '<div class="dx-app pay-acc" data-m="' + m + '"><label class="ck"><input type="checkbox" data-f="active"' + (a.active !== false && a.number ? ' checked' : '') + '> <b>' + esc(PM[m]) + '</b></label><div class="dx-form"><div><label>' + (m === 'bank' ? 'Account number' : 'Number customers send to') + '</label><input data-f="number" maxlength="40" inputmode="' + (m === 'bank' ? 'text' : 'tel') + '" value="' + esc(a.number || '') + '" placeholder="' + (m === 'bank' ? 'Your bank account number' : '01XXXXXXXXX') + '"></div><div><label>Account name</label><input data-f="name" maxlength="80" value="' + esc(a.name || '') + '" placeholder="Name on the account"></div><div><label>' + (m === 'bank' ? 'Bank name' : 'Type') + ' (shown to students)</label><input data-f="kind" maxlength="40" value="' + esc(a.kind || '') + '" placeholder="' + (m === 'bank' ? 'e.g. Dutch-Bangla Bank' : 'Personal, Agent or Merchant') + '"></div><div><label>Short note for students (optional)</label><input data-f="note" maxlength="140" value="' + esc(a.note || '') + '" placeholder="' + (m === 'bank' ? 'e.g. Branch and SWIFT code' : 'e.g. Choose “Send Money”') + '"></div></div></div>'; };
+      el.innerHTML = '<div class="dx-card"><div class="dx-h"><h3>To check now</h3><span class="mute">' + queue.length + (queue.length === 1 ? ' payment' : ' payments') + '</span></div>' +
+        (queue.length ? '<p class="mute" style="margin:0 0 8px">Open your bKash, Nagad, Rocket or bank app. Find the transaction ID, and check that the amount and the account are right. Then approve. Approving confirms the session and tells the student and the pilot.</p>' + queue.map(queueCard).join('') : '<p class="mute" style="margin:0">Nothing to check. New transaction IDs from students appear here, and you get a message too.</p>') + '</div>' +
+        (refunds.length ? '<div class="dx-card"><div class="dx-h"><h3>Refunds to send by hand</h3><span class="mute">' + refunds.length + '</span></div><p class="mute" style="margin:0 0 8px">These sessions were cancelled after a bKash or bank payment. Send the money back from the same account, then press “I have sent it”.</p>' + refunds.map(refundCard).join('') + '</div>' : '') +
+        (isAdmin ? '<form class="dx-card dx-form" id="pset" novalidate><h3 class="w2" style="margin:0">Payment by bKash, Nagad, Rocket or bank</h3><p class="mute w2" style="margin:0">Students send money straight to <b>your own official accounts</b> below, type the transaction ID, and you check it here. UniPilot never holds your account passwords.</p>' +
+          '<div class="w2 dx-item" style="margin:0"><div class="dx-item-main"><b id="psw-t">This payment option is ' + (on ? 'ON' : 'OFF') + '</b><small>' + (on ? 'Students see it when they pay for a session.' : 'Switch it on after you have saved your account numbers below.') + '</small></div><div class="dx-item-side"><label class="ck"><input type="checkbox" id="pon"' + (on ? ' checked' : '') + '> Switched on</label></div></div>' +
+          '<div class="w2"><p class="mute" style="margin:0">Exchange rate used for the taka amounts: ' + rateLine + '</p></div>' +
+          '<div class="w2 pay-accs">' + ['bkash', 'nagad', 'rocket', 'bank'].map(accRow).join('') + '</div>' +
+          '<div><label for="prh">We promise to check within (hours)</label><input id="prh" inputmode="numeric" maxlength="3" value="' + esc(S.manual_review_hours || 24) + '"></div><div><label for="pmh">Not for sessions starting within (hours)</label><input id="pmh" inputmode="numeric" maxlength="3" value="' + esc(S.manual_min_hours || 12) + '"></div>' +
+          '<div class="w2 dx-row"><button class="btn" id="psave" type="submit">Save</button><span class="amsg" id="pmsg" role="status" aria-live="polite"></span></div></form>' : '<div class="dx-card"><h3>Exchange rate</h3><p class="mute" style="margin:0">' + rateLine + '</p></div>') +
+        '<div class="dx-card"><h3>Recently checked</h3>' + (hist.length ? hist.map(histRow).join('') : '<p class="mute" style="margin:0">Nothing yet.</p>') + '</div>';
+
+      el.onclick = async ev => {
+        const cp = ev.target.closest('[data-copy]'); if (cp) { try { await navigator.clipboard.writeText(cp.dataset.copy); const o = cp.textContent; cp.textContent = 'Copied'; setTimeout(() => { cp.textContent = o; }, 1500); } catch (e) { U.toast('Press and hold the text to copy it', false); } return; }
+        const card = ev.target.closest('[data-c]'), rf = ev.target.closest('[data-rp]');
+        if (card) {
+          const q = queue.find(x => x.id === card.dataset.c); if (!q) return;
+          if (ev.target.closest('[data-ok]')) {
+            if (!await U.confirm('Approve this payment?', 'Do this only after you have seen ' + bdt(q.amount_bdt) + ' with transaction ID ' + q.trx_id + ' in your ' + (PM[q.method] || '') + ' account. The session is confirmed and the student and the pilot are told.', 'Yes, I see the money')) return;
+            const b = $('[data-ok]', card); busy(b, true, 'Approving…'); try { await run(sb.rpc('fn_review_manual_payment', { p_claim: q.id, p_approve: true, p_note: null })); U.toast('Payment approved. The session is confirmed.', true); api.refresh('payments'); } catch (e) { busy(b, false); U.toast(ctx.friendly(e), false); api.refresh('payments'); }
+          } else if (ev.target.closest('[data-no]')) {
+            const d = U.modal('<h2 style="margin:0 0 6px">Reject this payment</h2><p class="mute" style="margin:0 0 10px">The student reads your reason and can try again, so please be clear and kind.</p><div class="dx-chips" id="rwhy">' + REJECT_WHY.map(w => '<button type="button" class="chip" data-w="' + esc(w) + '">' + esc(w) + '</button>').join('') + '</div><label for="rtx" class="bk-l">Reason for the student</label><textarea id="rtx" rows="3" maxlength="300" style="width:100%;box-sizing:border-box"></textarea><p class="amsg" id="rmsg" role="status" aria-live="polite"></p><div class="dx-row"><button type="button" class="btn out" data-cancel>Cancel</button><button type="button" class="btn" data-go style="background:#b3261e;border-color:#b3261e;color:#fff">Reject payment</button></div>');
+            $('#rwhy', d).onclick = e => { const c = e.target.closest('[data-w]'); if (c) $('#rtx', d).value = c.dataset.w + '.'; };
+            $('[data-cancel]', d).onclick = () => d.close2(false);
+            $('[data-go]', d).onclick = async e => { const why = $('#rtx', d).value.trim(); if (why.length < 3) return say($('#rmsg', d), 'Please write a short reason.'); busy(e.target, true, 'Rejecting…'); try { await run(sb.rpc('fn_review_manual_payment', { p_claim: q.id, p_approve: false, p_note: why })); d.close2(true); U.toast('Payment rejected. The student was told why.', true); api.refresh('payments'); } catch (x) { busy(e.target, false); say($('#rmsg', d), ctx.friendly(x)); } };
+          }
+        } else if (rf && ev.target.closest('[data-sent]')) {
+          const p = refunds.find(x => x.id === rf.dataset.rp); if (!p) return; const m = rm[p.id] || {};
+          if (!await U.confirm('Have you sent the refund?', 'Press yes only after the money has left your account. The student is told it is on its way.', 'Yes, it is sent')) return;
+          const b = $('[data-sent]', rf); busy(b, true, 'Saving…'); try { await run(sb.rpc('fn_manual_refund_sent', { p_payment: p.id })); U.toast('Marked as sent. The student was told.', true); api.refresh('payments'); } catch (e) { busy(b, false); U.toast(ctx.friendly(e), false); }
+        }
+      };
+      const f = $('#pset', el); if (f) f.onsubmit = async ev => {
+        ev.preventDefault(); const m = $('#pmsg', el), list = [];
+        for (const k of ['bkash', 'nagad', 'rocket', 'bank']) {
+          const row = $('[data-m="' + k + '"]', f), v = n => $('[data-f="' + n + '"]', row).value.trim(), active = $('[data-f="active"]', row).checked, number = v('number').replace(/[\s-]/g, '');
+          if (!number && !v('name')) continue;
+          if (active && !number) return say(m, 'Please type the number for ' + PM[k] + ', or untick it.');
+          if (number && k !== 'bank' && !/^01[3-9]\d{8}$/.test(number)) return say(m, PM[k] + ' numbers look like 01712345678 (11 digits).');
+          if (number && k === 'bank' && !/^[A-Za-z0-9\-/ ]{5,34}$/.test(v('number'))) return say(m, 'Please check the bank account number.');
+          if (active && v('name').length < 2) return say(m, 'Please type the account name for ' + PM[k] + '.');
+          list.push({ method: k, number: k === 'bank' ? v('number') : number, name: v('name'), kind: v('kind'), note: v('note'), active });
+        }
+        const rh = parseInt($('#prh', f).value, 10), mh = parseInt($('#pmh', f).value, 10), turnOn = $('#pon', f).checked;
+        if (!(rh >= 1 && rh <= 168) || !(mh >= 0 && mh <= 168)) return say(m, 'Please type hours as whole numbers.');
+        if (turnOn && !list.some(a => a.active)) return say(m, 'Add at least one account before you switch this on.');
+        const b = $('#psave', f); busy(b, true, 'Saving…');
+        try {
+          for (const [key, value] of [['manual_accounts', list], ['manual_review_hours', rh], ['manual_min_hours', mh], ['manual_pay_enabled', turnOn]]) { const saved = await run(sb.from('app_settings').update({ value }).eq('key', key).select('key')); if (!saved || !saved.length) throw new Error('This was not saved. Please run the latest database update (patch 3) and use the owner account.'); }
+          U.toast('Saved. Payment by bKash is ' + (turnOn ? 'ON' : 'OFF') + '.', true); api.refresh('payments');
+        } catch (e) { busy(b, false); say(m, ctx.friendly(e)); }
+      };
+    }
+
     async function tMessages(el, api) {
       const sent = await run(sb.from('broadcasts').select('id,title,body,audience,link,created_at,sent_at').order('created_at', { ascending: false }).limit(20)), AUD = { all: 'Everyone', students: 'Students', pilots: 'Pilots' };
       el.innerHTML = (isAdmin ? '<form class="dx-card dx-form" id="bf" novalidate><h3 class="w2" style="margin:0">Send a message to dashboards</h3><p class="mute w2" style="margin:0">It appears in the Messages tab of every person in the group. Use it for news, deadlines, new free materials or seminar reminders.</p><div><label for="b1">Who should get it?</label><select id="b1"><option value="all">Everyone</option><option value="students">Students only</option><option value="pilots">Pilots only</option></select></div><div><label for="b2">Page to open (optional)</label><input id="b2" maxlength="120" placeholder="e.g. seminars.html"></div><div class="w2"><label for="b3">Title *</label><input id="b3" maxlength="120"></div><div class="w2"><label for="b4">Message *</label><textarea id="b4" rows="4" maxlength="1000"></textarea></div><div class="w2 dx-row"><button class="btn" id="bb" type="submit">Send now</button><span class="amsg" id="bm" role="status" aria-live="polite"></span></div></form>' : '') +
@@ -120,6 +211,6 @@
         try { const r = await run(sb.from('broadcasts').insert({ title: t, body, audience: aud, link: link || null, created_by: ctx.uid }).select('id').single()); const n = await run(sb.rpc('fn_send_broadcast', { p_id: r.id })); U.toast('Sent to ' + n + (n === 1 ? ' person' : ' people'), true); api.refresh('messages'); } catch (x) { busy(b, false); say(m, ctx.friendly(x)); } };
     }
 
-    return UP.ui.tabs(host, [{ id: 'overview', label: 'Overview', render: tOverview }, { id: 'people', label: 'People', render: tPeople }, { id: 'pilots', label: 'Pilots', render: tPilots }, { id: 'messages', label: 'Send a message', render: tMessages }, { id: 'notes', label: 'My inbox', render: UP.dash.notesTab(ctx) }], { key: 'admin', label: 'Admin sections', friendly: ctx.friendly, first: ctx.firstTab, fresh: ['overview', 'pilots', 'notes'] });
+    return UP.ui.tabs(host, [{ id: 'overview', label: 'Overview', render: tOverview }, { id: 'people', label: 'People', render: tPeople }, { id: 'pilots', label: 'Pilots', render: tPilots }, ...(isFin ? [{ id: 'payments', label: 'Payments', render: tPayments }] : []), { id: 'messages', label: 'Send a message', render: tMessages }, { id: 'notes', label: 'My inbox', render: UP.dash.notesTab(ctx) }], { key: 'admin', label: 'Admin sections', friendly: ctx.friendly, first: ctx.firstTab, fresh: ['overview', 'pilots', 'payments', 'notes'] });
   };
 })();
