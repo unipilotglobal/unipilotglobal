@@ -283,14 +283,15 @@
     const arr = v => Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [], id = String(r.slug || '').trim().toLowerCase();
     if (!id || !/^[a-z0-9-]{2,60}$/.test(id) || !String(r.display_name || '').trim()) return null;
     const ph = String(r.photo_url || '').trim(), li = String(r.linkedin_url || '').trim();
-    return { id, field: String(r.field || '').trim(), name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: '', about: String(r.bio || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '', alt: '', tags: arr(r.scholarships), edu: [], exp: [], langs: arr(r.languages), loc: '', studied: arr(r.studied_in), unis: arr(r.universities), helps: arr(r.helps_with), li: /^https:\/\//i.test(li) ? li : '', feat: false, fromDb: true, uuid: /^[0-9a-f-]{36}$/i.test(String(r.id || '')) ? String(r.id) : '', tz: String(r.timezone || '').trim() };
+    return { id, field: String(r.field || '').trim(), name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: String(r.tagline || '').trim(), about: String(r.bio || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '', alt: '', tags: arr(r.scholarships), edu: arr(r.education), exp: arr(r.highlights), langs: arr(r.languages), loc: String(r.based_in || '').trim(), studied: arr(r.studied_in), unis: arr(r.universities), helps: arr(r.helps_with), li: /^https:\/\//i.test(li) ? li : '', feat: false, fromDb: true, uuid: /^[0-9a-f-]{36}$/i.test(String(r.id || '')) ? String(r.id) : '', tz: String(r.timezone || '').trim() };
   };
   async function loadDbPilots() {
     if (!UP.accShown()) return [];
     try {
       const ctl = typeof AbortController === 'function' ? new AbortController() : null, t = setTimeout(() => { if (ctl) ctl.abort(); }, 6000);
       const base = 'slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url', go = cols => fetch(C.supabaseUrl + '/rest/v1/v_pilot_cards?select=' + cols + '&limit=300', { headers: { apikey: C.supabaseKey, Accept: 'application/json' }, signal: ctl ? ctl.signal : undefined });
-      let r = await go('id,timezone,' + base);
+      let r = await go('id,timezone,education,highlights,based_in,tagline,' + base);
+      if (!r.ok) r = await go('id,timezone,' + base);          // the full-profile database update is not installed yet
       if (!r.ok) r = await go(base);          // the database update for booking is not installed yet: still show the pilots
       clearTimeout(t); if (!r.ok) return []; const j = await r.json();
       return Array.isArray(j) ? j.map(dbMap).filter(Boolean) : [];

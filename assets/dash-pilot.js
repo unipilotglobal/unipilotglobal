@@ -13,6 +13,9 @@
   const run = async p => { const r = await p; if (r.error) throw r.error; return r.data; };
   const hm = t => String(t || '').slice(0, 5);
   const isUrl = s => /^https:\/\/[^\s]+\.[^\s]+$/i.test(s);
+  const MAX_EDU = 10, MAX_HIGH = 12, MAX_LINE = 220;
+  const linesOf = a => Array.isArray(a) ? a.map(x => String(x || '').trim()).filter(Boolean) : [];
+  const splitLines = v => String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
 
   // ------------------------------------------------------------------ the profile form (used by pilots and by admins)
   // o = { sb, pilot, friendly, own, onSaved }
@@ -23,13 +26,17 @@
       '<div><label for="pf1">Name shown to students *</label><input id="pf1" maxlength="120" required value="' + esc(p.display_name) + '"></div>' +
       '<div><label for="pf2">Main field</label><select id="pf2"></select></div>' +
       '<div class="w2"><label for="pf3">One-line headline</label><input id="pf3" maxlength="160" placeholder="e.g. DAAD scholar, now a PhD student in Germany" value="' + esc(p.headline || '') + '"></div>' +
+      '<div class="w2"><label for="pf13">Short tagline (optional)</label><input id="pf13" maxlength="160" placeholder="e.g. I help students write a stronger SOP and win a scholarship" value="' + esc(p.tagline || '') + '"></div>' +
       '<div class="w2"><label for="pf4">About you</label><textarea id="pf4" rows="6" maxlength="1500" placeholder="Where you studied, which scholarship you won, and how you can help a student.">' + esc(p.bio || '') + '</textarea><small class="mute"><span id="pf4c">0</span>/1500 characters</small></div>' +
+      '<div class="w2"><label for="pf14">Education journey</label><textarea id="pf14" rows="4" maxlength="2300" placeholder="One step per line, for example:&#10;BSc in Materials Science, University of Rajshahi&#10;MSc in Membrane Engineering, University of Twente">' + esc(linesOf(p.education).join('\n')) + '</textarea><small class="mute">One step per line, up to ' + MAX_EDU + ' lines. Students see them as a timeline.</small></div>' +
+      '<div class="w2"><label for="pf15">Experience and highlights</label><textarea id="pf15" rows="4" maxlength="2900" placeholder="One point per line, for example:&#10;Won the Erasmus Mundus scholarship for my Master&#10;Helped 30 students with their SOPs">' + esc(linesOf(p.highlights).join('\n')) + '</textarea><small class="mute">One point per line, up to ' + MAX_HIGH + ' lines.</small></div>' +
       '<div class="w2"><label>Can help with</label><div id="pf5"></div><div class="dx-chips" id="pf5s">' + HELPS.map(h => '<button type="button" class="chip" data-s="' + esc(h) + '">+ ' + esc(h) + '</button>').join('') + '</div></div>' +
       '<div class="w2"><label>Countries you studied or worked in</label><div id="pf6"></div></div>' +
       '<div class="w2"><label>Universities</label><div id="pf7"></div></div>' +
       '<div class="w2"><label>Scholarships you know well</label><div id="pf8"></div></div>' +
       '<div class="w2"><label>Languages</label><div id="pf9"></div></div>' +
-      '<div><label for="pf10">Photo link (https)</label><input id="pf10" inputmode="url" placeholder="https://…" value="' + esc(p.photo_url || '') + '"><small class="mute">Paste a link to a clear photo of your face. Photo upload is coming soon.</small></div>' +
+      '<div><label for="pf10">Photo link (https)</label><input id="pf10" inputmode="url" placeholder="https://…" value="' + esc(p.photo_url || '') + '"><div class="pf-prev" id="pf10p" hidden><img id="pf10i" alt="Your photo as students will see it" width="72" height="72"><small class="mute" id="pf10t"></small></div><small class="mute">Paste a link to a clear photo of your face. Photo upload is coming soon.</small></div>' +
+      '<div><label for="pf16">Based in (optional)</label><input id="pf16" maxlength="100" placeholder="e.g. Leipzig, Germany" value="' + esc(p.based_in || '') + '"></div>' +
       '<div><label for="pf11">LinkedIn link (optional)</label><input id="pf11" inputmode="url" placeholder="https://www.linkedin.com/in/…" value="' + esc(p.linkedin_url || '') + '"></div>' +
       '<div><label for="pf12">Time zone</label><select id="pf12">' + tzs.map(z => '<option' + (z === (p.timezone || 'UTC') ? ' selected' : '') + '>' + esc(z) + '</option>').join('') + '</select></div>' +
       '<div class="w2 dx-row"><button class="btn" id="pfb" type="submit">Save profile</button><span class="amsg" id="pfm" role="status" aria-live="polite"></span></div></form>';
@@ -39,12 +46,19 @@
     let helps = U.tagBox($('#pf5', el), p.helps_with, HO);
     const studied = U.tagBox($('#pf6', el), p.studied_in, { max: 12, label: 'Add a country', placeholder: 'e.g. Germany' }), unis = U.tagBox($('#pf7', el), p.universities, { max: 12, label: 'Add a university', placeholder: 'Type a university and press Enter' }), schs = U.tagBox($('#pf8', el), p.scholarships, { max: 15, label: 'Add a scholarship', placeholder: 'e.g. DAAD, Erasmus Mundus' }), langs = U.tagBox($('#pf9', el), p.languages, { max: 8, label: 'Add a language', placeholder: 'e.g. English, Bangla' });
     $('#pf5s', el).onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; const cur = helps.get(); if (!cur.some(x => x.toLowerCase() === b.dataset.s.toLowerCase())) cur.push(b.dataset.s); helps = U.tagBox($('#pf5', el), cur, HO); };
+    const pimg = $('#pf10i', el), pbox = $('#pf10p', el), ptxt = $('#pf10t', el), pin = $('#pf10', el);
+    const preview = () => { const v = pin.value.trim(); if (!v) { pbox.hidden = true; return; } pbox.hidden = false; if (!isUrl(v)) { pimg.removeAttribute('src'); pimg.hidden = true; ptxt.textContent = 'The link must start with https://'; return; } ptxt.textContent = 'Checking the photo…'; pimg.hidden = false; pimg.onload = () => { ptxt.textContent = 'This is how students see your photo.'; }; pimg.onerror = () => { pimg.hidden = true; ptxt.textContent = 'This link does not open as a picture. Open it in a new tab to check.'; }; pimg.src = v; };
+    pin.oninput = preview; preview();
     $('#pf', el).onsubmit = async ev => {
       ev.preventDefault(); const name = $('#pf1', el).value.trim(), ph = $('#pf10', el).value.trim(), li = $('#pf11', el).value.trim(); const m = $('#pfm', el);
       if (name.length < 2) return say(m, 'Please enter the name students should see.'); if (ph && !isUrl(ph)) return say(m, 'The photo link must start with https://'); if (li && !isUrl(li)) return say(m, 'The LinkedIn link must start with https://');
+      const edu = splitLines($('#pf14', el).value), high = splitLines($('#pf15', el).value), tag = $('#pf13', el).value.trim(), based = $('#pf16', el).value.trim();
+      if (edu.length > MAX_EDU) return say(m, 'Education journey: please use at most ' + MAX_EDU + ' lines.'); if (high.length > MAX_HIGH) return say(m, 'Experience and highlights: please use at most ' + MAX_HIGH + ' lines.');
+      if (edu.some(x => x.length > MAX_LINE) || high.some(x => x.length > MAX_LINE)) return say(m, 'Each line can have at most ' + MAX_LINE + ' characters. Please shorten the long one.');
       const row = { display_name: name, headline: $('#pf3', el).value.trim() || null, bio: bio.value.trim() || null, field: f.value || null, helps_with: helps.get(), studied_in: studied.get(), universities: unis.get(), scholarships: schs.get(), languages: langs.get(), photo_url: ph || null, linkedin_url: li || null, timezone: $('#pf12', el).value };
+      const extra = { education: edu, highlights: high, based_in: based || null, tagline: tag || null };
       const b = $('#pfb', el); busy(b, true, 'Saving…');
-      try { await run(sb.from('pilots').update(row).eq('id', p.id)); if (o.own && row.timezone !== (p.timezone || 'UTC')) { try { await run(sb.from('availability_rules').update({ timezone: row.timezone }).eq('pilot_id', p.id)); } catch (e) { } } Object.assign(p, row); say(m, 'Saved.', true); U.toast('Profile saved', true); if (o.onSaved) o.onSaved(p); }
+      try { let more = true; try { await run(sb.from('pilots').update(Object.assign({}, row, extra)).eq('id', p.id)); } catch (e1) { if (!/education|highlights|based_in|tagline|schema cache|column/i.test(String((e1 && e1.message) || ''))) throw e1; more = false; await run(sb.from('pilots').update(row).eq('id', p.id)); } if (!more) { say(m, 'Saved, but the new profile parts need the latest database update (patch 3) first.'); } if (o.own && row.timezone !== (p.timezone || 'UTC')) { try { await run(sb.from('availability_rules').update({ timezone: row.timezone }).eq('pilot_id', p.id)); } catch (e) { } } Object.assign(p, row, more ? extra : {}); if (more) say(m, 'Saved.', true); U.toast('Profile saved', true); if (o.onSaved) o.onSaved(p); }
       catch (e) { say(m, o.friendly(e)); } busy(b, false);
     };
   };

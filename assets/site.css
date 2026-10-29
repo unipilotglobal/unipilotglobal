@@ -481,6 +481,7 @@ nav{gap:15px}nav a{font-size:.9rem}
 .dx-form input:not([type=checkbox]):not([type=radio]),.dx-form select,.dx-form textarea,.dx-modal input:not([type=checkbox]),.dx-modal select,.dx-modal textarea,.dx-tools input,.dx-addrow input{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font:inherit;color:var(--ink)}
 .dx-form input:focus,.dx-form select:focus,.dx-form textarea:focus,.dx-modal input:focus,.dx-modal textarea:focus,.dx-tools input:focus{outline:0;border-color:var(--blue);box-shadow:0 0 0 4px #1f4e8c20}
 .dx-form small{display:block;color:var(--mute);font-size:.8rem;margin-top:3px}
+.pf-prev{display:flex;align-items:center;gap:10px;margin-top:8px}.pf-prev[hidden],.pf-prev img[hidden]{display:none}.pf-prev img{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #dfe6f1;background:#f3f6fb}.pf-prev small{margin:0}
 .dx-form .ck,.dx-card .ck{border-bottom:0;padding:6px 0}
 .dx-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .dx-chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
