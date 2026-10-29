@@ -36,7 +36,7 @@
 let pg = 1, fkey = '', ready = false, deep = false, tag = '', fld = '', cty = '', hlp = '', q = '', expert = '';
 UP.boot('pilots', U => {
   const { C, $, $$, esc, D } = U, P = new URLSearchParams(location.search), svc = id => C.services.find(p => p.id === id), byId = id => D.experts.find(e => e.id === id), fn = n => String(n).split(' ')[0];
-  $('#chat').innerHTML = U.wa() ? 'or chat on <a href="' + U.wa() + '" target="_blank" rel="noopener"><b>WhatsApp ' + esc(U.waDisplay()) + '</b></a>' : '';
+  $('#chat').innerHTML = '';      // the personal number is no longer shown on this page; WhatsApp stays one tap away in the header and the round button
   const cnt = {}; D.experts.forEach(e => e.tags.forEach(t => { const k = t.toLowerCase(); cnt[k] = cnt[k] || [t, 0]; cnt[k][1]++; }));
   const tl = Object.keys(cnt).map(k => cnt[k]).sort((a, b) => b[1] - a[1]).slice(0, 14).map(x => x[0]), fl = Array.from(new Set(D.experts.map(e => e.field).filter(Boolean))).sort();
   $('#mfl').hidden = D.experts.length < 3; $('#pjoin').hidden = !U.accLinks();
