@@ -7,9 +7,10 @@
 window.CONFIG = window.CONFIG || {};
 CONFIG.supabaseUrl = 'https://gqhqvwwdrnrxwgfolxvu.supabase.co';
 CONFIG.supabaseKey = 'sb_publishable_LCGxrSs1aG-rq32DNMykNw_U_4zpIac';
-// PRIVATE TEST MODE: while this is false, visitors see no Sign in link and no Save buttons. The page unipilotglobal.com/account.html
-// still works, so you can test it yourself. Change false to true on the day you want to announce accounts.
-CONFIG.accountsLaunch = false;
+// Sign in / My account is visible to everyone. To hide it again (for example while testing), change true to false.
+CONFIG.accountsLaunch = true;
+// "Continue with Google" button. Keep false until Google sign-in is set up in Supabase (Authentication, Sign In / Providers, Google).
+CONFIG.googleSignIn = false;
 // version of the privacy text people agree to (changes whenever the legal page text changes)
 CONFIG.legal = CONFIG.legal || {};
 CONFIG.legal.updated = '28 October 2026';

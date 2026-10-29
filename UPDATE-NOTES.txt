@@ -1,63 +1,43 @@
-UNIPILOT GLOBAL - website update (28 October 2026)
+UNIPILOT GLOBAL - website update 2 (29 October 2026)
 
-WHAT THIS IS
-Every website file that changed since the last version you uploaded (21 October). It contains two things:
-  1. The October update (Closing soon, filter drawers, merged Services & Visa and News & Stories, locked materials, Find my match).
-  2. NEW: accounts (sign in, My account, save scholarships) connected to your Supabase project.
-Your Excel file, your images folder, your logo and all other files stay exactly as they are.
-The accounts are in PRIVATE TEST MODE: visitors will NOT see any Sign in link yet. You turn it on yourself later.
+WHAT CHANGED
+1. SIGN IN IS NOW VISIBLE. A "Sign in" button sits in the top bar on every page (phone and computer).
+   After signing in it turns into a round badge with your first letter. The top bar now stays on screen while you scroll.
+2. SMALL SIGN-IN WINDOW. When someone taps a locked free material, "Save" on a scholarship, or "Save" on a pilot,
+   a small window opens on the same page. They create an account or sign in and carry on. They never leave the page.
+3. PHONE DESIGN REBUILT. Home page is about half as long. Short top bar, compact header, shorter hero,
+   two-column search form, small continent tiles, swipe rows for scholarships and news, compact pilot cards, shorter footer.
+4. WHATSAPP is now a small round icon (bottom right). The text pill is gone.
+5. "PILOTS" is now in the menu.
+6. PILOT PAGE: a "Save" button on each pilot profile, and an optional sign-in strip inside the booking form
+   (signed-in people get their name and email filled in).
+7. GOOGLE BUTTON is built but switched OFF until Google is set up (see below).
 
-HOW TO USE IT WITH GITHUB DESKTOP
-1. Unzip this folder.
-2. Copy the files into your website folder and choose "Replace" for every question. Keep the same
-   folders: files inside "assets" go into your assets folder (including the new "vendor" folder).
-3. In GitHub Desktop you will see the changed files. Write a summary such as "Accounts (private test), October update".
-   Click Commit, then Push.
-4. Wait 1 to 2 minutes and open the site with Ctrl+F5.
+THE 9 FILES (replace the old ones; keep the same folders)
+  accounts.js                index.html               scholarships.html
+  consultation.html          opportunity.html
+  assets/site.js             assets/site.css          assets/account.js      assets/account-page.js
+Do NOT touch config.js, content.xlsx or your images. They are not in this package on purpose.
 
-THE FILES
-  NEW      account.html            accounts.js
-  NEW      assets/account.js       assets/account-page.js        assets/vendor/supabase-js-2.118.0.min.js
-  CHANGED  assets/site.js          assets/site.css               config.js
-           index.html              scholarships.html             consultation.html
-           services.html           news.html                     reviews.html
-           opportunity.html        materials.html                seminars.html
-           legal.html              visa.html
+HOW TO UPLOAD
+1. Unzip. Copy the files into your website folder, choose "Replace". Files inside "assets" go into your assets folder.
+2. GitHub Desktop: write a summary like "Visible sign in, phone design", click Commit, then Push.
+3. Wait 1 to 2 minutes. On the phone, close the tab and open the site again (or open it in a private tab).
 
-IF YOU CHANGED config.js YOURSELF
-This package includes my version of config.js. If you edited yours since October (WhatsApp number, prices,
-social links, form key...), do NOT replace it. Only change the menu list (the "nav" part at the bottom) to this:
+TWO SWITCHES IN accounts.js
+  CONFIG.accountsLaunch = true;    change to false to hide Sign in and Save again.
+  CONFIG.googleSignIn   = false;   change to true ONLY after Google is set up in Supabase.
 
-  nav: [
-    { id: 'home',      label: 'Home',           href: 'index.html' },
-    { id: 'find',      label: 'Scholarships',   href: 'scholarships.html' },
-    { id: 'materials', label: 'Free Materials', href: 'materials.html' },
-    { id: 'seminars',  label: 'Seminars',       href: 'seminars.html' },
-    { id: 'services',  label: 'Services & Visa', href: 'services.html' },
-    { id: 'news',      label: 'News & Stories', href: 'news.html' }
-  ]
-
-TESTING YOUR ACCOUNT (private test mode)
-- Open https://unipilotglobal.com/account.html and sign in with the email and password you created in Supabase.
-- You should see "Hello, ..." with an Admin and a Finance badge.
-- Visitors cannot see the Sign in link until you launch. To launch: open accounts.js, change
-      CONFIG.accountsLaunch = false;   to   CONFIG.accountsLaunch = true;
-  upload, and the Sign in link and the Save button on scholarship pages appear for everyone.
-- Do NOT launch before email sending (SMTP) is set up in Supabase. Until then, new people cannot receive their
-  confirmation email. I will guide you through it.
-
-THE ONE SETTINGS FILE FOR ACCOUNTS: accounts.js
-It holds your Supabase address and the PUBLIC key. Both are safe in a website. Never put the "secret" or
-"service_role" key or the database password in any website file.
-
-WHAT TO CHECK AFTER UPLOADING
-- Home page: the section says "Closing soon". Menu has no Sign in link (private test mode).
-- Scholarships and Consultation pages: a "Filters" button next to the search box opens a panel.
-- Menu: Home, Scholarships, Free Materials, Seminars, Services & Visa, News & Stories.
-- Legal page: the privacy notice now mentions accounts, Supabase, the sign-in token and deleting your account.
+IMPORTANT BEFORE YOU ADVERTISE SIGN-UP
+Supabase's built-in email service only sends to your own team and is very limited. If "Confirm email" is ON in Supabase,
+new visitors may see "We could not send the email right now". Two ways to fix it (I will guide you):
+  a) Quick: Supabase, Authentication, Sign In / Providers, Email: switch "Confirm email" OFF. Sign-up then works at once.
+  b) Better, later: connect a free email sender (Brevo or Resend) and keep "Confirm email" ON.
+Google sign-in does not need email, so it works either way.
 
 HONEST NOTES
-- I tested every account action in a simulated browser against a copy of your database rules (sign-up, sign-in,
-  password reset, saving, profile, alerts, data download, account deletion). I could not test against the live
-  Supabase email service, Google sign-in, or a phone. Your first real sign-in is the real test.
-- The privacy notice text is mine, not a lawyer's. Please have it checked before you launch.
+- Tested: every account action in a simulated browser against your real database rules (all checks pass), the old
+  site tests, phone and computer screenshots of every page, and no sideways scrolling at 360, 390, 430 and 768 px.
+- Not tested: a real phone, the live Supabase email service, Google sign-in (needs your Google setup).
+- Booking with calendar, prices and payment, the pilot dashboard, the AI assistant and the admin screens are the next big parts.
+- The privacy text on the legal page is a good draft, not legal advice. Have a lawyer read it before launch.

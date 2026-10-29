@@ -19,23 +19,15 @@
   const say = (id, text, ok) => { const m = $(id); if (!m) return; m.className = 'w2 amsg ' + (ok ? 'ok' : 'bad'); m.textContent = text || ''; };
   const busy = (btn, v, txt) => { if (!btn) return; if (v) { btn.dataset.t = btn.textContent; btn.textContent = txt || 'Please wait…'; } else if (btn.dataset.t) btn.textContent = btn.dataset.t; btn.disabled = !!v; };
   const isEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s);
-  const friendly = e => {
-    const m = String((e && (e.message || e.error_description)) || e || '').toLowerCase(), code = String((e && e.code) || '').toLowerCase();
-    if (m.includes('invalid login')) return 'That email and password do not match. Please try again, or use "Forgot password".';
-    if (m.includes('email not confirmed')) return 'Please confirm your email first: open the message we sent you and click the link.';
-    if (code.includes('rate_limit') || m.includes('rate limit') || m.includes('too many')) return 'Too many tries or emails just now. Please wait a few minutes and try again.';
-    if (m.includes('not authorized') || m.includes('sending') || m.includes('smtp') || m.includes('confirmation email')) return 'We could not send the email right now. Please try again later or contact us.';
-    if (m.includes('password') && (m.includes('weak') || m.includes('least') || m.includes('should'))) return 'Please choose a stronger password (at least 10 characters).';
-    if (m.includes('failed to fetch') || m.includes('network')) return 'Connection problem. Please check your internet and try again.';
-    return 'Something went wrong: ' + (e && e.message ? e.message : 'please try again') + '.';
-  };
+  const friendly = A.friendly;
 
   // ------------------------------------------------------------------ signed out
   function showAuth(tab) {
     tab = tab || (params.get('mode') === 'signup' ? 'up' : 'in');
     head(tab === 'up' ? 'Create your free account' : 'Sign in', tab === 'up' ? 'Save scholarships, get deadline alerts and book pilots when booking opens.' : 'Welcome back. Pick up where you left off.');
     const err = hashErr ? '<p class="amsg bad">' + esc(decodeURIComponent(hashErr.replace(/\+/g, ' '))) + ' Please request a new link below.</p>' : '';
-    root().innerHTML = '<div class="acol"><div class="atabs" role="tablist"><button type="button" class="chip' + (tab === 'in' ? ' on' : '') + '" data-tab="in" role="tab">Sign in</button><button type="button" class="chip' + (tab === 'up' ? ' on' : '') + '" data-tab="up" role="tab">Create account</button></div>' + err +
+    const gb = A.google ? '<button type="button" class="gbtn" id="gg">' + A.GICON + '<span>Continue with Google</span></button><p class="gnote">By continuing you agree to the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy notice</a> and <a href="legal.html" target="_blank" rel="noopener">Terms</a>.</p><div class="or"><span>or with your email</span></div>' : '';
+    root().innerHTML = '<div class="acol">' + gb + '<div class="atabs" role="tablist"><button type="button" class="chip' + (tab === 'in' ? ' on' : '') + '" data-tab="in" role="tab">Sign in</button><button type="button" class="chip' + (tab === 'up' ? ' on' : '') + '" data-tab="up" role="tab">Create account</button></div>' + err +
       (tab === 'in' ? `<form class="box f" id="fin" novalidate>
         <div class="w2"><label for="e1">Email</label><input id="e1" type="email" required autocomplete="email" inputmode="email"></div>
         <div class="w2"><label for="p1">Password</label><input id="p1" type="password" required autocomplete="current-password"></div>
@@ -51,6 +43,12 @@
         <div class="w2"><button class="btn lg" id="b2" type="submit">Create my account</button></div>
         <p class="w2 amsg" id="m2" role="status" aria-live="polite"></p></form>`) + '</div>';
     root().querySelectorAll('[data-tab]').forEach(b => b.onclick = () => showAuth(b.dataset.tab));
+    const gg = $('#gg'); if (gg) gg.onclick = async () => {
+      try { localStorage.setItem('up_pc_any', JSON.stringify({ v: VERSION, t: Date.now() })); } catch (x) { }
+      busy(gg, true, 'Opening Google…');
+      try { const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) } }); if (r.error) throw r.error; }
+      catch (x) { busy(gg, false); try { localStorage.removeItem('up_pc_any'); } catch (e) { } say(tab === 'up' ? '#m2' : '#m1', friendly(x)); }
+    };
     if (tab === 'in') wireSignIn(); else wireSignUp();
   }
 
@@ -127,24 +125,17 @@
     if (!d.pr) { head('Your account', ''); root().innerHTML = '<div class="acol"><div class="box c"><h3>Your profile is not ready yet</h3><p>Please refresh in a minute. If this stays, email us at ' + esc(C.email) + '.</p><button class="btn out" id="so" type="button">Sign out</button></div></div>'; $('#so').onclick = () => sb.auth.signOut(); return; }
     if (d.pr.deleted_at) { await sb.auth.signOut({ scope: 'local' }); return showAuth(); }
 
-    // record the agreement that was ticked at sign-up (once), otherwise ask for it
+    // record the agreement that was shown at sign-up (ticked box, or "by continuing" under the Google button), otherwise ask for it
     if (!d.cons.some(c => c.kind === 'privacy')) {
-      let pend = null; try { pend = JSON.parse(localStorage.getItem('up_pc') || 'null'); } catch (e) { }
-      if (pend && user.email && pend.e === String(user.email).toLowerCase()) { const ok = await recordConsent(uid, pend.v, pend.mk); if (ok) { try { localStorage.removeItem('up_pc'); } catch (e) { } return showDash(); } }
+      await A.settle(sb, user);
+      if (await A.consentOk(sb, uid)) return showDash();
       return showGate(uid);
     }
     if (next) { A.go(next); return; }            // came here from a "Save" button: go back to where they were
     draw(d);
   }
 
-  async function recordConsent(uid, v, mk) {
-    try {
-      const rows = [{ user_id: uid, kind: 'privacy', version: v }, { user_id: uid, kind: 'terms', version: v }]; if (mk) rows.push({ user_id: uid, kind: 'marketing', version: v });
-      const r = await sb.from('consents').insert(rows); if (r.error) throw r.error;
-      if (mk) await sb.from('profiles').update({ marketing_opt_in: true }).eq('id', uid);
-      return true;
-    } catch (e) { console.warn('Agreement not recorded', e); return false; }
-  }
+  const recordConsent = (uid, v, mk) => A.recordConsent(sb, uid, mk);
 
   function showGate(uid) {
     head('One quick step', 'Before you continue, please confirm how we may handle your details.');
