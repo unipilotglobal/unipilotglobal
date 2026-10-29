@@ -62,6 +62,9 @@
     draw(); return { get: () => { const i = $('input', host); if (i && i.value.trim()) { i.value.split(',').map(s => s.trim()).filter(Boolean).forEach(t => { if (v.length < max && !v.some(y => y.toLowerCase() === t.toLowerCase())) v.push(t.slice(0, 80)); }); i.value = ''; } return v.slice(); } };
   }
   const csv = (rows, name) => { const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""').replace(/^([=+\-@])/, "'$1") + '"'; const text = rows.map(r => r.map(q).join(',')).join('\r\n'); const blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  const fmtSize = n => n == null ? '' : n < 1024 ? n + ' B' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+  // opens a private file through a link that works for one minute only (the file itself is never public)
+  async function openDoc(sb, path, name) { const r = await sb.storage.from('student-docs').createSignedUrl(path, 60, { download: name || true }); if (r.error || !r.data || !r.data.signedUrl) throw (r.error || new Error('The file could not be opened')); if (UP.acc && UP.acc.go) UP.acc.go(r.data.signedUrl); else location.href = r.data.signedUrl; }
   const busy = (btn, v, txt) => { if (!btn) return; if (v) { btn.dataset.t = btn.textContent; btn.textContent = txt || 'Please wait…'; } else if (btn.dataset.t) btn.textContent = btn.dataset.t; btn.disabled = !!v; };
   const say = (el, text, ok) => { if (typeof el === 'string') el = $(el); if (!el) return; el.className = 'amsg ' + (ok ? 'ok' : 'bad'); el.textContent = text || ''; };
 
@@ -77,5 +80,5 @@
       draw();
       el.onclick = async e => { const o = e.target.closest('[data-open]'); if (!o) return; const id = o.closest('[data-id]').dataset.id; try { await run(sb.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id).eq('user_id', uid)); } catch (x) { } ctx.openLink(o.dataset.open); };
   };
-  UP.ui = { esc, $, $$, fmtDate, fmtDT, ago, money, daysLeft, dueChip, toast, modal, confirm: confirmBox, errCard, loading, empty, kpi, meter, tabs, tagBox, csv, busy, say, pad };
+  UP.ui = { fmtSize, openDoc, esc, $, $$, fmtDate, fmtDT, ago, money, daysLeft, dueChip, toast, modal, confirm: confirmBox, errCard, loading, empty, kpi, meter, tabs, tagBox, csv, busy, say, pad };
 })();

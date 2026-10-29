@@ -202,6 +202,9 @@
       if (q('#dt').value.trim() !== 'DELETE') return say('#dm', 'Please type DELETE in capital letters to confirm.');
       const b = q('#dc'); busy(b, true, 'Deleting…');
       try {
+        // private files are removed first (if that fails we stop, so nothing is left behind)
+        try { const dd = await sb.from('documents').select('storage_path').eq('student_id', user.id); if (dd.error) throw dd.error; const paths = (dd.data || []).map(r => r.storage_path).filter(Boolean); if (paths.length) { const rr = await sb.storage.from('student-docs').remove(paths); if (rr.error) throw rr.error; } }
+        catch (e) { throw new Error('We could not remove your uploaded files, so your account was not deleted. Please try again in a minute.'); }
         const x = await sb.rpc('fn_delete_my_account'); if (x.error) throw x.error;
         finished = true; await sb.auth.signOut({ scope: 'local' }); try { localStorage.removeItem('up_pc'); } catch (e) { }
         head('Account deleted', 'Your account and sign-in were removed.'); root().innerHTML = '<div class="acol"><div class="box c"><h3>Your account was deleted</h3><p>Thank you for using ' + esc(C.brand) + '. You are welcome back any time.</p><a class="btn" href="index.html">Back to the home page</a></div></div>';
@@ -215,7 +218,7 @@
     if (d.pilot) views.push(['pilot', 'Pilot']); if (staff) views.push(['admin', 'Admin']);
     let saved = ''; try { saved = localStorage.getItem('up_view') || ''; } catch (e) { }
     let cur = views.some(v => v[0] === want) ? want : views.some(v => v[0] === saved) ? saved : staff ? 'admin' : d.pilot ? 'pilot' : 'student';
-    const pr = d.pr, ctx = { sb, uid, user, A, C, roles: d.roles, pr, pilot: d.pilot, friendly, privacy: { html: privacyHTML, wire: wirePrivacy }, tzList, myTz, firstTab: null,
+    const pr = d.pr, ctx = { sb, uid, user, A, C, roles: d.roles, pr, pilot: d.pilot, friendly, privacy: { html: privacyHTML, wire: wirePrivacy }, tzList, myTz, firstTab: null, checkout: null, checkout: null,
       refreshHead: () => { const f = (pr.full_name || '').split(' ')[0] || 'there'; head('Hello, ' + f, user.email || ''); const n = $('.dx-who b'); if (n) n.textContent = pr.full_name || user.email || ''; const av = $('.dx-av'); if (av) av.textContent = (pr.full_name || user.email || '?').trim().charAt(0).toUpperCase(); },
       reload: v => showDash(v), signOut: () => sb.auth.signOut(),
       linkOK: l => { l = String(l || ''); return DASH_LINK.test(l) || (!!A.safeNext(l.replace(/^\//, '')) && l.replace(/^\//, '') !== 'account.html'); },
@@ -231,6 +234,9 @@
       ctx.firstTab = null;
     }
     root().querySelectorAll('.dx-sw').forEach(b => b.onclick = () => show(b.dataset.v));
+    // coming back from the card payment page: ?checkout=success|cancelled&booking=<id>
+    const co = params.get('checkout');
+    if (co === 'success' || co === 'cancelled') { ctx.checkout = { state: co, booking: /^[0-9a-f-]{36}$/i.test(params.get('booking') || '') ? params.get('booking') : '' }; try { history.replaceState(null, '', location.pathname); } catch (e) { } params.delete('checkout'); cur = 'student'; show('student', 'sessions'); return; }
     show(cur);
   }
 

@@ -51,7 +51,9 @@ UP.boot('pilots', U => {
     $('#mg').innerHTML = l.length ? vis.map(U.mentorCard).join('') : '<div class="box c" style="grid-column:1/-1"><h3>' + (D.experts.length ? 'No pilot matches yet' : 'Our pilots are joining soon') + '</h3><p class="mute">Tell us what you need and we will find the right person.</p><button class="btn" type="button" data-b="">Get matched with a pilot</button></div>'; };
   list();
   const open = d => { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }, shut = d => { if (d.close) d.close(); else d.removeAttribute('open'); };
-  const book = e => { expert = e ? e.name : ''; $('#bwith').innerHTML = e ? 'Session request for pilot <b>' + esc(e.name) + '</b>' : 'Tell us about your goals and we will match you with the right pilot.'; if (e) { if (Array.from($('#subject').options).some(o => o.value === e.field)) $('#subject').value = e.field; if (svc('expert')) $('#service').value = svc('expert').name; } open($('#bk')); bauth(); };
+  // Pilots from the database open the booking calendar. Pilots from the Excel file, or any problem loading the calendar, use the short request form.
+  const book = e => { if (e && e.fromDb && e.uuid && U.accShown()) { U.bookOpen({ uuid: e.uuid, name: e.name, photo: e.photo, tz: e.tz, fallback: () => bookForm(e) }).catch(() => bookForm(e)); return; } bookForm(e); };
+  const bookForm = e => { expert = e ? e.name : ''; $('#bwith').innerHTML = e ? 'Session request for pilot <b>' + esc(e.name) + '</b>' : 'Tell us about your goals and we will match you with the right pilot.'; if (e) { if (Array.from($('#subject').options).some(o => o.value === e.field)) $('#subject').value = e.field; if (svc('expert')) $('#service').value = svc('expert').name; } open($('#bk')); bauth(); };
   // Optional sign-in strip inside the booking form: signed-in visitors get their details filled in; others can sign in without leaving.
   const bauth = async () => { const box = $('#bauth'); if (!U.accShown()) { box.hidden = true; return; }
     const u = U.sessUser(), nm = u && ((u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || ''), em = u && u.email || '';

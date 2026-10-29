@@ -114,6 +114,9 @@
   UP.sessUser = () => { try { const j = JSON.parse(localStorage.getItem('sb-' + accRef + '-auth-token') || 'null'); return (j && j.user) || null; } catch (e) { return null; } };
   UP.loadAcc = () => UP.acc ? Promise.resolve(UP.acc) : (UP.accP = UP.accP || new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/account.js'; sc.onload = () => res(UP.acc); sc.onerror = () => { UP.accP = null; rej(new Error('Sign-in code could not load')); }; document.head.appendChild(sc); }));
   const UICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>';
+  // the booking calendar is a separate file, loaded only when someone opens a booking
+  UP.loadBook = () => UP.book && UP.book.open ? Promise.resolve(UP.book) : (UP.bookP = UP.bookP || UP.loadAcc().then(() => new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/booking.js'; sc.onload = () => res(UP.book); sc.onerror = () => { UP.bookP = null; rej(new Error('Booking code could not load')); }; document.head.appendChild(sc); })));
+  UP.bookOpen = o => UP.loadBook().then(b => b.open(o));
   UP.signHTML = () => { const u = UP.sessUser(); if (!UP.accLinks()) return ''; const nm = u && ((u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || u.email) || '', ini = String(nm).trim().slice(0, 1).toUpperCase() || '&#9679;';
     return u ? `<a id="hsign" class="hsign in" href="account.html" aria-label="My account"><span class="hav">${esc(ini)}</span><span class="hst">My account</span></a>` : `<a id="hsign" class="hsign" href="account.html" aria-label="Sign in">${UICON}<span class="hst">Sign in</span></a>`; };
   // redraws the Sign in / My account links (header, menu, footer) after someone signs in or out
@@ -191,33 +194,82 @@
       shut(); window.open(link, '_blank', 'noopener'); }; };
   document.addEventListener('up-auth', unlockCards);
   document.addEventListener('click', e => { const g = e.target.closest('[data-gate]'); if (g) { e.preventDefault(); UP.gate(g.dataset.gate, g.dataset.t); } });
+  // ---- AI helper (optional). It appears only when the "ai-chat" server function answers a ping, so nothing breaks while it is not set up.
+  const aiHdr = () => ({ 'Content-Type': 'application/json', apikey: C.supabaseKey, Authorization: 'Bearer ' + C.supabaseKey });
+  const aiFetch = (body, ms) => { const ctl = typeof AbortController === 'function' ? new AbortController() : null, t = setTimeout(() => { if (ctl) ctl.abort(); }, ms);
+    return fetch(String(C.supabaseUrl).replace(/\/$/, '') + '/functions/v1/ai-chat', { method: 'POST', headers: aiHdr(), body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined }).finally(() => clearTimeout(t)); };
+  let aiMemo = null;
+  UP.aiReady = () => { const now = Date.now(); if (aiMemo && now - aiMemo.t < (aiMemo.ok ? 600000 : 120000)) return aiMemo.p;
+    const p = (async () => { if (!C.supabaseUrl || !C.supabaseKey || C.aiChat === false) return false;
+      try { const r = await aiFetch({ ping: true }, 5000); if (!r.ok) return false; const j = await r.json(); return !!(j && j.ok === true); } catch (e) { return false; } })();
+    const m = aiMemo = { t: now, p, ok: false }; p.then(ok => { m.ok = ok; }); return p; };
+  const AI_STOP = new Set('the and for with from that this what which where when how can you your are any have has about into who why does not get give want need looking find some more than best good scholarship scholarships please tell'.split(' '));
+  // Chooses the listings most related to the conversation, so the AI only sees a short, relevant list (never the whole database).
+  UP.aiPick = (text, profile, n) => { text = String(text || '').toLowerCase(); profile = profile || {}; const toks = (text.match(/[a-z0-9]{3,}/g) || []).filter(w => !AI_STOP.has(w)), wantClosed = /\b(closed|past|expired|old)\b/.test(text);
+    const arr = x => Array.isArray(x) ? x : [], sc = UP.D.opps.map(o => { const nm = (String(o.name) + ' ' + String(o.sponsor)).toLowerCase(), rest = [arr(o.countries).join(' '), arr(o.levels).join(' '), arr(o.subjects).join(' '), arr(o.tags).join(' '), arr(o.regions).join(' '), o.type, o.funding, o.elig, o.award].join(' ').toLowerCase();
+      let s = 0; toks.forEach(w => { if (nm.includes(w)) s += 3; else if (rest.includes(w)) s += 1; });
+      if (profile.level && (profile.level === 'Internship' ? o.type === 'Internship' : arr(o.levels).includes(profile.level))) s += 2;
+      if (profile.region && arr(o.regions).includes(profile.region)) s += 2; if (profile.funding === 'full' && o.funding === 'full') s += 1.5; if (profile.subject && arr(o.subjects).includes(profile.subject)) s += 1.5;
+      if (o.featured) s += .5; if (o.closed && !wantClosed) s -= 6; return { o, s }; });
+    sc.sort((a, b) => b.s - a.s); return sc.slice(0, n).map(x => ({ id: x.o.id, name: x.o.name, sponsor: x.o.sponsor, countries: x.o.countries, levels: x.o.levels, funding: x.o.funding, award: x.o.award, deadline: x.o.deadline, closed: !!x.o.closed, elig: x.o.elig })); };
+  // Turns the AI's text into safe HTML: everything is escaped first, then only **bold**, line breaks and links to OUR OWN listings are added.
+  UP.aiHtml = t => { const ids = new Map(UP.D.opps.map(o => [String(o.id).toLowerCase(), o.id]));
+    return esc(t).replace(/\*\*([^*\n]{1,120})\*\*/g, '<b>$1</b>').replace(/\s?\[\[([a-z0-9-]{1,81})\]\]/g, (m, id) => ids.has(id) ? ' <a class="ai-link" href="opportunity.html?id=' + encodeURIComponent(ids.get(id)) + '">View page</a>' : '').replace(/\[\[[^\]]{0,90}\]\]/g, '').replace(/\n/g, '<br>'); };
+  UP.aiAsk = async (msgs, profile) => {
+    const lastUser = msgs.filter(m => m.role === 'user').slice(-3).map(m => m.content).join(' ');
+    try { const r = await aiFetch({ messages: msgs.slice(-10), context: UP.aiPick(lastUser, profile, 25), profile }, 40000), j = await r.json().catch(() => ({}));
+      if (r.ok && j && j.reply) return { reply: String(j.reply) };
+      if (r.status === 429) return { limit: true, error: String(j.message || "You have reached today's free question limit. Please come back tomorrow, or talk to a pilot for personal advice.") };
+      return { error: j && j.error && j.error !== 'limit' ? String(j.error) : 'The AI helper could not answer right now. Please try again in a minute.' };
+    } catch (e) { return { error: e && e.name === 'AbortError' ? 'The AI helper is taking too long. Please try again.' : 'We could not reach the AI helper. Please check your internet connection and try again.' }; } };
   // Guided assistant: asks four questions and answers ONLY from your own listings, so it can never invent a scholarship.
   UP.assistant = () => { if (document.getElementById('asb')) return;
     const b = document.createElement('button'); b.id = 'asb'; b.type = 'button'; b.className = 'asst'; b.textContent = 'Find my match'; document.body.appendChild(b);
     const d = document.createElement('dialog'); d.id = 'asd'; d.className = 'm2 sm'; document.body.appendChild(d);
     const ST = () => [['level', 'What are you looking for?', [['Master', "A Master's scholarship"], ['Bachelor', "A Bachelor's scholarship"], ['PhD', 'A PhD scholarship'], ['Internship', 'An internship']]], ['region', 'Where would you like to study?', [['', 'Anywhere']].concat(UP.REGIONS.map(r => [r[0], r[0]]))], ['funding', 'How much funding do you need?', [['full', 'Fully funded only'], ['', 'Any funding is fine']]], ['subject', 'What is your field?', [['', 'Any field']].concat(UP.SUBJECTS.map(s => [s, s]))]];
-    let i = 0, v = {};
-    const open = () => { i = 0; v = {}; draw(); if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }, shut = () => { if (d.close) d.close(); else d.removeAttribute('open'); };
+    let i = 0, v = {}, aiOn = false, chatOn = false, busy = false, hist = [], view = [];
+    const open = () => { i = 0; v = {}; chatOn = false; draw(); if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+      UP.aiReady().then(ok => { if (ok !== aiOn) { aiOn = ok; if (!chatOn && d.hasAttribute('open')) draw(); } }); }, shut = () => { if (d.close) d.close(); else d.removeAttribute('open'); };
     const flt = () => ({ level: v.level && v.level !== 'Internship' ? [v.level] : [], type: v.level === 'Internship' ? ['Internship'] : [], region: v.region ? [v.region] : [], funding: v.funding ? [v.funding] : [], subject: v.subject ? [v.subject] : [] });
-    const draw = () => { const S = ST(), top = '<button class="x" type="button" data-x aria-label="Close">&times;</button>';
-      if (i < S.length) { const [k, q, os] = S[i]; d.innerHTML = `${top}<div class="in"><p class="pk2">Step ${i + 1} of ${S.length}</p><h2 style="margin:4px 0 16px">${esc(q)}</h2><div class="aopts">${os.map(o => `<button type="button" class="aopt" data-k="${k}" data-v="${esc(o[0])}">${esc(o[1])}</button>`).join('')}</div>${i ? '<button type="button" class="btn out sm" data-back style="margin-top:18px">Back</button>' : ''}</div>`; return; }
+    const aiBtn = (cls) => aiOn ? `<button type="button" class="${cls}" data-chat>Ask our AI helper</button>` : '';
+    const prof = () => { const p = {}; ['level', 'region', 'funding', 'subject'].forEach(k => { if (v[k]) p[k] = v[k]; }); return p; };
+    const starters = () => { const p = prof(); return ['Which fully funded scholarships close soonest?', Object.keys(p).length ? 'Which scholarships fit me best?' : "Which scholarships are good for a Master's degree?", 'How do I start my application?']; };
+    const bubble = m => `<div class="ai-m ${m.k}">${m.k === 'u' ? esc(m.t) : m.h}</div>`;
+    const drawChat = () => { const top = '<button class="x" type="button" data-x aria-label="Close">&times;</button>';
+      d.innerHTML = `${top}<div class="in"><p class="pk2">AI helper</p><h2 style="margin:4px 0 8px">Ask a question</h2><p class="ai-note">The AI can make mistakes. Please confirm every detail on the official page. Do not type passport, bank or other private details. Your questions are processed by Anthropic, which runs the AI, and we do not save them.</p><div class="ai-log" id="ail" role="log" aria-live="polite" aria-label="Conversation">${view.length ? view.map(bubble).join('') : `<div class="ai-chips">${starters().map(q => `<button type="button" class="ai-chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>`}</div><form class="ai-form" id="aif"><textarea id="ait" rows="2" maxlength="500" aria-label="Your question" placeholder="Type your question here"${view.some(m => m.lim) ? ' disabled' : ''}></textarea><button class="btn" type="submit"${busy || view.some(m => m.lim) ? ' disabled' : ''}>Send</button></form><div class="mact" style="margin-top:12px"><button type="button" class="btn out sm" data-qs>Back to the questions</button><a class="btn out sm" href="pilots.html">Talk to a pilot</a></div></div>`;
+      const l = d.querySelector('#ail'), la = l && l.querySelector('.ai-m.a:last-child'); if (l) l.scrollTop = la ? Math.max(0, la.offsetTop - l.offsetTop - 4) : l.scrollHeight; };      // a new answer is shown from its first line, a new question at the bottom
+    const say = async text => { text = String(text || '').trim().slice(0, 500); if (!text || busy) return; busy = true; view = view.filter(m => m.k !== 'e');
+      view.push({ k: 'u', t: text }); hist.push({ role: 'user', content: text }); view.push({ k: 'w', h: '<span class="ai-dots" aria-label="Thinking"><i></i><i></i><i></i></span>' }); drawChat();
+      const r = await UP.aiAsk(hist, prof()); busy = false; view = view.filter(m => m.k !== 'w');
+      if (r.reply) { hist.push({ role: 'assistant', content: r.reply }); view.push({ k: 'a', h: UP.aiHtml(r.reply) }); }
+      else { hist.pop(); view.pop(); view.push({ k: 'e', h: esc(r.error), lim: !!r.limit }); }      // a failed question is put back in the box so nothing has to be typed twice
+      if (chatOn && d.hasAttribute('open')) { drawChat(); const t = d.querySelector('#ait'); if (t) { if (!r.reply && !r.limit) t.value = text; if (!t.disabled) t.focus(); } } };
+    const draw = () => { if (chatOn) return drawChat(); const S = ST(), top = '<button class="x" type="button" data-x aria-label="Close">&times;</button>';
+      if (i < S.length) { const [k, q, os] = S[i]; d.innerHTML = `${top}<div class="in"><p class="pk2">Step ${i + 1} of ${S.length}</p><h2 style="margin:4px 0 16px">${esc(q)}</h2><div class="aopts">${os.map(o => `<button type="button" class="aopt" data-k="${k}" data-v="${esc(o[0])}">${esc(o[1])}</button>`).join('')}</div>${i ? '<button type="button" class="btn out sm" data-back style="margin-top:18px">Back</button>' : aiBtn('btn out sm ai-open')}</div>`; return; }
       const f = flt(), all = UP.filterList(UP.D.opps, f).filter(o => !o.closed), best = all.slice().sort((a, c) => (c.featured - a.featured) || ((c.funding === 'full') - (a.funding === 'full'))).slice(0, 3), qs = []; Object.keys(v).forEach(k => { if (v[k]) qs.push(k === 'level' && v[k] === 'Internship' ? 'type=Internship' : k + '=' + encodeURIComponent(v[k])); });
       const seen = new Set(), pl = []; best.forEach(o => UP.pilotsFor(o).forEach(x => { if (!seen.has(x.e.id) && pl.length < 2) { seen.add(x.e.id); pl.push(x); } })); if (!pl.length && v.subject) UP.D.experts.filter(e => e.field === v.subject).slice(0, 2).forEach(e => pl.push({ e, why: e.field }));
-      d.innerHTML = `${top}<div class="in"><h2 style="margin:0 0 6px">${all.length ? 'We found ' + all.length + (all.length === 1 ? ' match' : ' matches') : 'No exact match yet'}</h2><p class="mute" style="margin:0 0 14px">${all.length ? 'Here are the strongest ones. Always confirm details on the official page.' : 'Try again with a wider choice, or ask our advisors.'}</p>${best.map(o => `<a class="amatch" href="opportunity.html?id=${encodeURIComponent(o.id)}"><b>${esc(o.name)}</b><span>${esc((o.sponsor || '').split(' - ')[0].split(':')[0])}</span></a>`).join('')}${all.length > 3 ? `<a class="btn sm" style="margin:6px 0 14px" href="scholarships.html?${qs.join('&')}">See all ${all.length} results</a>` : ''}${pl.length ? `<h3 style="margin:14px 0 8px;font-size:1rem">Pilots who can guide you</h3><div class="pgrid">${pl.map(UP.pilotMini).join('')}</div>` : ''}<div class="mact" style="margin-top:16px"><a class="btn" href="pilots.html">Talk to a pilot</a><button type="button" class="btn out" data-restart>Start again</button></div></div>`; };
-    b.onclick = open; d.onclick = e => { if (e.target.closest('[data-x]') || e.target === d) { shut(); return; } const o = e.target.closest('.aopt'); if (o) { v[o.dataset.k] = o.dataset.v; i++; draw(); } else if (e.target.closest('[data-back]')) { i = Math.max(0, i - 1); draw(); } else if (e.target.closest('[data-restart]')) { i = 0; v = {}; draw(); } }; };
+      d.innerHTML = `${top}<div class="in"><h2 style="margin:0 0 6px">${all.length ? 'We found ' + all.length + (all.length === 1 ? ' match' : ' matches') : 'No exact match yet'}</h2><p class="mute" style="margin:0 0 14px">${all.length ? 'Here are the strongest ones. Always confirm details on the official page.' : 'Try again with a wider choice, or ask our advisors.'}</p>${best.map(o => `<a class="amatch" href="opportunity.html?id=${encodeURIComponent(o.id)}"><b>${esc(o.name)}</b><span>${esc((o.sponsor || '').split(' - ')[0].split(':')[0])}</span></a>`).join('')}${all.length > 3 ? `<a class="btn sm" style="margin:6px 0 14px" href="scholarships.html?${qs.join('&')}">See all ${all.length} results</a>` : ''}${pl.length ? `<h3 style="margin:14px 0 8px;font-size:1rem">Pilots who can guide you</h3><div class="pgrid">${pl.map(UP.pilotMini).join('')}</div>` : ''}<div class="mact" style="margin-top:16px"><a class="btn" href="pilots.html">Talk to a pilot</a>${aiBtn('btn out')}<button type="button" class="btn out" data-restart>Start again</button></div></div>`; };
+    b.onclick = open; d.onclick = e => { if (e.target.closest('[data-x]') || e.target === d) { shut(); return; } const o = e.target.closest('.aopt'); if (o) { v[o.dataset.k] = o.dataset.v; i++; draw(); } else if (e.target.closest('[data-back]')) { i = Math.max(0, i - 1); draw(); } else if (e.target.closest('[data-restart]')) { i = 0; v = {}; draw(); }
+      else if (e.target.closest('[data-chat]')) { chatOn = true; drawChat(); const t = d.querySelector('#ait'); if (t) t.focus(); }
+      else if (e.target.closest('[data-qs]')) { chatOn = false; draw(); }
+      else { const q = e.target.closest('[data-q]'); if (q) say(q.dataset.q); } };
+    d.onsubmit = e => { e.preventDefault(); const t = d.querySelector('#ait'); if (t && t.value.trim()) say(t.value); };
+    d.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.id === 'ait') { e.preventDefault(); const t = e.target; if (t.value.trim()) say(t.value); } }); };
 
   // ---- approved pilots from the database (public, read-only: only name, profile text and photo of ACTIVE pilots are ever sent)
   const dbMap = r => {
     const arr = v => Array.isArray(v) ? v.map(x => String(x || '').trim()).filter(Boolean) : [], id = String(r.slug || '').trim().toLowerCase();
     if (!id || !/^[a-z0-9-]{2,60}$/.test(id) || !String(r.display_name || '').trim()) return null;
     const ph = String(r.photo_url || '').trim(), li = String(r.linkedin_url || '').trim();
-    return { id, field: String(r.field || '').trim(), name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: '', about: String(r.bio || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '', alt: '', tags: arr(r.scholarships), edu: [], exp: [], langs: arr(r.languages), loc: '', studied: arr(r.studied_in), unis: arr(r.universities), helps: arr(r.helps_with), li: /^https:\/\//i.test(li) ? li : '', feat: false, fromDb: true };
+    return { id, field: String(r.field || '').trim(), name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: '', about: String(r.bio || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '', alt: '', tags: arr(r.scholarships), edu: [], exp: [], langs: arr(r.languages), loc: '', studied: arr(r.studied_in), unis: arr(r.universities), helps: arr(r.helps_with), li: /^https:\/\//i.test(li) ? li : '', feat: false, fromDb: true, uuid: /^[0-9a-f-]{36}$/i.test(String(r.id || '')) ? String(r.id) : '', tz: String(r.timezone || '').trim() };
   };
   async function loadDbPilots() {
     if (!UP.accShown()) return [];
     try {
       const ctl = typeof AbortController === 'function' ? new AbortController() : null, t = setTimeout(() => { if (ctl) ctl.abort(); }, 6000);
-      const r = await fetch(C.supabaseUrl + '/rest/v1/v_pilot_cards?select=slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url&limit=300', { headers: { apikey: C.supabaseKey, Accept: 'application/json' }, signal: ctl ? ctl.signal : undefined });
+      const base = 'slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url', go = cols => fetch(C.supabaseUrl + '/rest/v1/v_pilot_cards?select=' + cols + '&limit=300', { headers: { apikey: C.supabaseKey, Accept: 'application/json' }, signal: ctl ? ctl.signal : undefined });
+      let r = await go('id,timezone,' + base);
+      if (!r.ok) r = await go(base);          // the database update for booking is not installed yet: still show the pilots
       clearTimeout(t); if (!r.ok) return []; const j = await r.json();
       return Array.isArray(j) ? j.map(dbMap).filter(Boolean) : [];
     } catch (e) { return []; }

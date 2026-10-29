@@ -33,6 +33,8 @@
     if (m.includes('provider is not enabled') || m.includes('unsupported provider')) return 'Google sign-in is not available yet. Please use your email.';
     if (m.includes('not authorized') || m.includes('sending') || m.includes('smtp') || m.includes('confirmation email')) return 'We could not send the email right now. Please try again later or contact us.';
     if (m.includes('password') && (m.includes('weak') || m.includes('least') || m.includes('should'))) return 'Please choose a stronger password (at least 10 characters).';
+    if (m.includes('exceeded the maximum') || m.includes('payload too large')) return 'This file is larger than 10 MB. Please make it smaller and try again.';
+    if (m.includes('mime type')) return 'This file type is not allowed. Please use PDF, Word, JPG, PNG or text.';
     if (m.includes('failed to fetch') || m.includes('network')) return 'Connection problem. Please check your internet and try again.';
     return 'Something went wrong: ' + (e && e.message ? e.message : 'please try again') + '.';
   };

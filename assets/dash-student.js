@@ -122,14 +122,100 @@
       };
     }
 
+    // ---------------------------------------------------------------- documents (private files; optional sharing with a pilot the student booked)
+    const KINDS = [['cv', 'CV / Resume'], ['sop', 'SOP / motivation letter'], ['transcript', 'Transcript'], ['certificate', 'Certificate'], ['recommendation', 'Recommendation letter'], ['language_test', 'Language test (IELTS, TOEFL…)'], ['other', 'Other']];
+    const KIND = Object.fromEntries(KINDS), EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', txt: 'text/plain' }, MAXB = 10485760, MAXN = 25;
+    const uuid = () => { try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); } };
+    async function tDocs(el, api) {
+      const [docs, shares, pl] = await Promise.all([run(sb.from('documents').select('id,name,kind,storage_path,size_bytes,uploaded_at').eq('student_id', uid).order('uploaded_at', { ascending: false })), run(sb.from('document_shares').select('document_id,pilot_id,expires_at')), sb.from('pilots').select('id,display_name').then(r => r.data || [], () => [])]);
+      const pname = {}; pl.forEach(x => pname[x.id] = x.display_name); const live = shares.filter(x => Date.parse(x.expires_at) > Date.now());
+      const sharedWith = id => live.filter(x => x.document_id === id).map(x => pname[x.pilot_id] || 'a pilot');
+      el.innerHTML = '<form class="dx-card dx-form" id="dfu" novalidate><h3 class="w2" style="margin:0">My documents</h3><p class="mute w2" style="margin:0">Keep your CV, motivation letters, transcripts and certificates in one private place. <b>Only you can see them.</b> You can choose to share a file with a pilot you have booked, for 30 days, and stop sharing any time.</p>' +
+        '<div><label for="dk">What is it?</label><select id="dk">' + KINDS.map(k => '<option value="' + k[0] + '">' + esc(k[1]) + '</option>').join('') + '</select></div><div><label for="dn">Name (optional)</label><input id="dn" maxlength="120" placeholder="For example: CV for DAAD"></div>' +
+        '<div class="w2"><label for="df">File (PDF, Word, JPG, PNG or text, up to 10 MB)</label><input id="df" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"></div><div class="w2 dx-row"><button class="btn" id="db" type="submit">Upload</button><span class="amsg" id="dm" role="status" aria-live="polite"></span></div></form>' +
+        '<div class="dx-card"><div class="dx-h"><h3>Your files</h3><span class="pill">' + docs.length + ' of ' + MAXN + '</span></div>' + (docs.length ? docs.map(d => { const w = sharedWith(d.id); return '<div class="dx-app dx-doc" data-id="' + esc(d.id) + '"><div class="dx-app-h"><div><b>' + esc(d.name) + '</b><small>' + esc(KIND[d.kind] || 'Other') + (d.size_bytes != null ? ' · ' + esc(U.fmtSize(d.size_bytes)) : '') + ' · added ' + esc(U.fmtDate(d.uploaded_at)) + '</small>' + (w.length ? '<small class="dx-shared">&#128279; Shared with ' + esc(w.join(', ')) + '</small>' : '') + '</div><div class="dx-item-side"><button class="btn out sm" type="button" data-dl>Download</button><button class="btn out sm" type="button" data-share>Share…</button><button class="btn out sm bk-cx" type="button" data-rm>Delete</button></div></div></div>'; }).join('') : U.empty('No documents yet', 'Upload your first file above. Having your CV and SOP ready makes applications and pilot sessions much easier.')) + '</div>';
+      const fi = $('#df', el), m = $('#dm', el);
+      $('#dfu', el).onsubmit = async ev => {
+        ev.preventDefault(); const f = fi.files && fi.files[0]; if (!f) return say(m, 'Please choose a file first.');
+        const ext = (f.name.split('.').pop() || '').toLowerCase(); if (!EXT[ext]) return say(m, 'This file type is not allowed. Please use PDF, Word, JPG, PNG or text.');
+        if (f.size <= 0) return say(m, 'This file is empty.'); if (f.size > MAXB) return say(m, 'This file is larger than 10 MB. Please make it smaller and try again.');
+        if (docs.length >= MAXN) return say(m, 'You can keep up to ' + MAXN + ' files. Please delete one first.');
+        const b = $('#db', el), path = uid + '/' + uuid() + '.' + ext, name = ($('#dn', el).value.trim() || f.name).slice(0, 200); busy(b, true, 'Uploading…'); say(m, '');
+        try {
+          const up = await sb.storage.from('student-docs').upload(path, f, { contentType: EXT[ext], upsert: false }); if (up.error) throw up.error;
+          const ins = await sb.from('documents').insert({ student_id: uid, name, kind: $('#dk', el).value, storage_path: path, size_bytes: f.size });
+          if (ins.error) { try { await sb.storage.from('student-docs').remove([path]); } catch (x) { } throw ins.error; }
+          U.toast('Uploaded', true); api.refresh('documents');
+        } catch (e) { busy(b, false); say(m, ctx.friendly(e)); }
+      };
+      el.onclick = async ev => {
+        const box = ev.target.closest('[data-id]'); if (!box) return; const d = docs.find(x => x.id === box.dataset.id); if (!d) return;
+        const dl = ev.target.closest('[data-dl]'), sh = ev.target.closest('[data-share]'), rm = ev.target.closest('[data-rm]');
+        if (dl) { busy(dl, true, 'Opening…'); try { await U.openDoc(sb, d.storage_path, d.name); } catch (e) { U.toast(ctx.friendly(e), false); } busy(dl, false); }
+        if (rm && await U.confirm('Delete this file?', '“' + d.name + '” will be removed for good, and any pilot it was shared with can no longer open it.', 'Delete', true)) {
+          try { const r = await sb.storage.from('student-docs').remove([d.storage_path]); if (r.error) throw r.error; await run(sb.from('documents').delete().eq('id', d.id).eq('student_id', uid)); U.toast('Deleted', true); api.refresh('documents'); } catch (e) { U.toast(ctx.friendly(e), false); }
+        }
+        if (sh) shareDialog(d, api);
+      };
+    }
+    // choose which of my pilots may open one file (only pilots I have a confirmed or recent session with)
+    async function shareDialog(d, api) {
+      let mine = [], cur = [];
+      try {
+        const [bk, shs, pl] = await Promise.all([run(sb.from('bookings').select('pilot_id,status,completed_at').eq('student_id', uid)), run(sb.from('document_shares').select('pilot_id,expires_at').eq('document_id', d.id)), sb.from('pilots').select('id,display_name').then(r => r.data || [], () => [])]);
+        const nm = {}; pl.forEach(x => { nm[x.id] = x.display_name; }); const ok = new Set(bk.filter(b => b.status === 'confirmed' || (b.status === 'completed' && b.completed_at && Date.now() - Date.parse(b.completed_at) < 30 * 864e5)).map(b => b.pilot_id));
+        mine = Array.from(ok).map(id => ({ id, name: nm[id] || 'Your pilot' })); cur = shs;
+      } catch (e) { return U.toast(ctx.friendly(e), false); }
+      const isOn = id => cur.some(x => x.pilot_id === id && Date.parse(x.expires_at) > Date.now()), until = id => { const x = cur.find(y => y.pilot_id === id); return x ? U.fmtDate(x.expires_at) : ''; };
+      const dlg = U.modal('<h2 style="margin:0 0 6px">Share “' + esc(d.name) + '”</h2><p class="mute" style="margin:0 0 12px">A pilot can open the file for <b>30 days</b>. You can stop sharing any time. Only pilots you have a session with can be chosen.</p>' +
+        (mine.length ? mine.map(p => '<div class="dx-item" data-pid="' + esc(p.id) + '"><div class="dx-item-main"><b>' + esc(p.name) + '</b><small>' + (isOn(p.id) ? 'Can open it until ' + esc(until(p.id)) : 'Not shared') + '</small></div><div class="dx-item-side">' + (isOn(p.id) ? '<button class="btn out sm" type="button" data-off>Stop sharing</button>' : '<button class="btn sm" type="button" data-on>Share for 30 days</button>') + '</div></div>').join('') : '<div class="dx-empty"><p>You can share files with a pilot after you book a session with them.</p><a class="btn sm" href="pilots.html">Find a pilot</a></div>') + '<p class="amsg" id="sm" role="status" aria-live="polite"></p>');
+      dlg.onclick = async ev => {
+        const row = ev.target.closest('[data-pid]'), on = ev.target.closest('[data-on]'), off = ev.target.closest('[data-off]'); if (!row || (!on && !off)) return; const pid = row.dataset.pid, b = on || off; busy(b, true, 'Saving…');
+        try {
+          if (off) await run(sb.from('document_shares').delete().eq('document_id', d.id).eq('pilot_id', pid));
+          else { await sb.from('document_shares').delete().eq('document_id', d.id).eq('pilot_id', pid); await run(sb.from('document_shares').insert({ document_id: d.id, pilot_id: pid })); }
+          U.toast(off ? 'No longer shared' : 'Shared for 30 days', true); dlg.close2(true); api.refresh('documents');
+        } catch (e) { busy(b, false); say($('#sm', dlg), ctx.friendly(e)); }
+      };
+    }
+
     // ---------------------------------------------------------------- sessions
+    let pollN = 0, pollT = null;
     async function tSessions(el, api) {
-      const [books, revs] = await Promise.all([run(sb.from('bookings').select('id,pilot_id,service_id,starts_at,ends_at,status,price_cents,currency,meeting_url').eq('student_id', uid).order('starts_at', { ascending: false })), run(sb.from('reviews').select('booking_id,rating').eq('student_id', uid))]);
-      if (!books.length) { el.innerHTML = '<div class="dx-card">' + U.empty('No sessions yet', 'Send a short session request and we will match you with a pilot. Booking with a calendar is coming soon, and your sessions, receipts and reviews will appear here.', '<a class="btn sm" href="pilots.html">Find your pilot</a>') + '</div>'; return; }
-      const pil = {}; try { (await run(sb.from('pilots').select('id,display_name'))).forEach(p => pil[p.id] = p.display_name); } catch (e) { }
-      const rated = new Set(revs.map(r => r.booking_id));
-      el.innerHTML = '<div class="dx-card"><h3>My sessions</h3>' + books.map(b => '<div class="dx-app" data-id="' + esc(b.id) + '"><div class="dx-app-h"><div><b>' + esc(pil[b.pilot_id] || 'Your pilot') + '</b><small>' + esc(U.fmtDT(b.starts_at)) + ' · ' + esc(String(Math.round((Date.parse(b.ends_at) - Date.parse(b.starts_at)) / 60000))) + ' min · ' + (b.price_cents ? esc(U.money(b.price_cents, b.currency)) : 'Free') + '</small></div><div class="dx-item-side"><span class="pill ' + (b.status === 'completed' ? 'ok' : b.status === 'confirmed' ? 'ok' : '') + '">' + esc(BOOK[b.status] || b.status) + '</span>' + (b.meeting_url && b.status === 'confirmed' && /^https:\/\//i.test(b.meeting_url) ? '<a class="btn sm" href="' + esc(b.meeting_url) + '" target="_blank" rel="noopener">Join</a>' : '') + '</div></div>' +
-        (b.status === 'completed' && !rated.has(b.id) ? '<form class="dx-form dx-rev" data-rev><div><label>Your rating</label><select data-r><option value="5">5 – Excellent</option><option value="4">4 – Good</option><option value="3">3 – OK</option><option value="2">2 – Poor</option><option value="1">1 – Bad</option></select></div><div class="w2"><label>How was your session? (optional)</label><textarea rows="3" maxlength="1500" data-c></textarea></div><div class="w2 dx-row"><button class="btn sm" type="submit">Send review</button><span class="amsg" role="status" aria-live="polite"></span></div></form>' : '') + '</div>').join('') + '</div>';
+      const [books, revs, sv, st, pl] = await Promise.all([
+        run(sb.from('bookings').select('id,pilot_id,service_id,starts_at,ends_at,status,price_cents,currency,meeting_url,created_at').eq('student_id', uid).order('starts_at', { ascending: false })),
+        run(sb.from('reviews').select('booking_id,rating').eq('student_id', uid)),
+        sb.from('pilot_services').select('id,title').then(r => r.data || [], () => []), sb.from('app_settings').select('key,value').in('key', ['cancel_hours', 'unpaid_hold_minutes', 'payments_enabled']).then(r => r.data || [], () => []),
+        sb.from('pilots').select('id,display_name').then(r => r.data || [], () => [])]);
+      const cfg = { cancel_hours: 24, unpaid_hold_minutes: 45, payments_enabled: false }; st.forEach(x => { cfg[x.key] = x.value; }); cfg.payments_enabled = cfg.payments_enabled === true || cfg.payments_enabled === 'true'; cfg.unpaid_hold_minutes = +cfg.unpaid_hold_minutes || 45; cfg.cancel_hours = +cfg.cancel_hours || 24;
+      const pil = {}; pl.forEach(p => pil[p.id] = p.display_name); const svc = {}; sv.forEach(x => svc[x.id] = x.title);
+      const co = ctx.checkout; ctx.checkout = null;
+      let banner = '';
+      if (co && co.state === 'success') { const bk = books.find(x => x.id === co.booking); banner = bk && bk.status === 'confirmed' ? '<div class="dx-card dx-flash ok" role="status"><b>Payment received. Your session is confirmed.</b><span>We emailed you the details. Add it to your calendar below.</span></div>' : '<div class="dx-card dx-flash ok" role="status"><b>Thank you! We are confirming your payment…</b><span>This usually takes a few seconds. This page updates by itself.</span></div>'; if (!(bk && bk.status === 'confirmed') && pollN < 8) { clearTimeout(pollT); pollN++; pollT = setTimeout(() => { if (el.isConnected) { ctx.checkout = co; api.draw('sessions', true, true); } }, 4000); } }
+      else if (co && co.state === 'cancelled') banner = '<div class="dx-card dx-flash" role="status"><b>Payment was not completed</b><span>Nothing was charged. If your time is still held, press “Pay now” below to try again.</span></div>';
+      const hold = b => Date.parse(b.created_at) + cfg.unpaid_hold_minutes * 60000 - Date.now();
+      const now = Date.now(), heldOk = b => b.status === 'requested' && b.price_cents > 0 && hold(b) > 0 && Date.parse(b.ends_at) > now;
+      const upcoming = b => (b.status === 'confirmed' && Date.parse(b.ends_at) > now) || heldOk(b);
+      const up = books.filter(upcoming).sort((x, y) => Date.parse(x.starts_at) - Date.parse(y.starts_at)), past = books.filter(b => !upcoming(b));
+      const head = '<div class="dx-row" style="justify-content:space-between;margin:0 0 10px"><h3 style="margin:0">My sessions</h3><a class="btn sm" href="pilots.html">Book a session</a></div>';
+      if (!books.length) { el.innerHTML = banner + '<div class="dx-card">' + U.empty('No sessions yet', 'Choose a pilot, pick a day and a time, and your session will appear here with the meeting link, reminders and your review.', '<a class="btn sm" href="pilots.html">Find your pilot</a>') + '</div>'; return; }
+      const rated = new Set(revs.map(r => r.booking_id)), tzl = ctx.myTz();
+      const mins = b => Math.round((Date.parse(b.ends_at) - Date.parse(b.starts_at)) / 60000);
+      const card = b => {
+        const held = b.status === 'requested', ok = upcoming(b), left = held ? Math.max(1, Math.ceil(hold(b) / 60000)) : 0, join = b.meeting_url && b.status === 'confirmed' && /^https:\/\//i.test(b.meeting_url);
+        const label = held && !ok ? 'Hold expired' : BOOK[b.status] || b.status;
+        return '<div class="dx-app" data-id="' + esc(b.id) + '"><div class="dx-app-h"><div><b>' + esc(pil[b.pilot_id] || 'Your pilot') + '</b><small>' + (svc[b.service_id] ? esc(svc[b.service_id]) + ' · ' : '') + esc(U.fmtDT(b.starts_at)) + ' · ' + esc(String(mins(b))) + ' min · ' + (b.price_cents ? esc(U.money(b.price_cents, b.currency)) : 'Free') + '</small></div><div class="dx-item-side"><span class="pill ' + (b.status === 'completed' || (b.status === 'confirmed') ? 'ok' : held && ok ? 'warn' : '') + '">' + esc(label) + '</span>' + (join ? '<a class="btn sm" href="' + esc(b.meeting_url) + '" target="_blank" rel="noopener">Join</a>' : '') + '</div></div>' +
+          (ok ? '<div class="dx-row bk-acts">' + (held && cfg.payments_enabled ? '<button class="btn sm" type="button" data-pay>Pay now</button><span class="mute">Your time is held for ' + left + ' more ' + (left === 1 ? 'minute' : 'minutes') + '.</span>' : '') + (held && !cfg.payments_enabled ? '<span class="mute">Online payment is not open yet.</span>' : '') + (b.status === 'confirmed' ? '<button class="btn out sm" type="button" data-ics>Add to calendar</button>' + (join ? '' : '<span class="mute">Your pilot adds the meeting link here before the session.</span>') : '') + '<button class="btn out sm bk-cx" type="button" data-cancel>' + (held ? 'Release this time' : 'Cancel') + '</button></div>' : '') +
+          (b.status === 'completed' && !rated.has(b.id) ? '<form class="dx-form dx-rev" data-rev><div><label>Your rating</label><select data-r><option value="5">5 – Excellent</option><option value="4">4 – Good</option><option value="3">3 – OK</option><option value="2">2 – Poor</option><option value="1">1 – Bad</option></select></div><div class="w2"><label>How was your session? (optional)</label><textarea rows="3" maxlength="1500" data-c></textarea></div><div class="w2 dx-row"><button class="btn sm" type="submit">Send review</button><span class="amsg" role="status" aria-live="polite"></span></div></form>' : '') + '</div>';
+      };
+      el.innerHTML = banner + '<div class="dx-card">' + head + (up.length ? '<h4 class="bk-sec">Coming up</h4>' + up.map(card).join('') : '<p class="mute" style="margin:0 0 6px">No upcoming sessions. <a href="pilots.html">Book one</a> whenever you are ready.</p>') + '</div>' + (past.length ? '<div class="dx-card"><h4 class="bk-sec" style="margin-top:0">Earlier</h4>' + past.map(card).join('') + '</div>' : '') + '<p class="mute bk-tzn">Times are shown in your time zone (' + esc(tzl) + ').</p>';
+      el.onclick = async ev => {
+        const box = ev.target.closest('[data-id]'); if (!box) return; const bk = books.find(x => x.id === box.dataset.id); if (!bk) return;
+        const pay = ev.target.closest('[data-pay]'), cx = ev.target.closest('[data-cancel]'), ics = ev.target.closest('[data-ics]');
+        if (ics) { try { await UP.loadBook(); UP.ics({ id: bk.id, starts_at: bk.starts_at, ends_at: bk.ends_at, title: (svc[bk.service_id] || 'Session') + ' with ' + (pil[bk.pilot_id] || 'your UniPilot pilot') }); } catch (e) { U.toast(ctx.friendly(e), false); } }
+        if (pay) { busy(pay, true, 'Opening payment…'); try { const B = await UP.loadBook(); await B.pay(sb, bk.id); } catch (e) { busy(pay, false); U.toast(ctx.friendly(e), false); } }
+        if (cx) { try { const B = await UP.loadBook(), msg = await B.cancel({ sb, booking: bk, who: 'student', name: (pil[bk.pilot_id] || 'Session') }); if (msg) { U.toast(msg, true); api.refresh('sessions'); } } catch (e) { U.toast(ctx.friendly(e), false); } }
+      };
       el.onsubmit = async ev => { const f = ev.target.closest('[data-rev]'); if (!f) return; ev.preventDefault(); const bid = f.closest('[data-id]').dataset.id, bk = books.find(x => x.id === bid), btn = $('button', f); busy(btn, true, 'Sending…');
         try { await run(sb.from('reviews').insert({ booking_id: bid, student_id: uid, pilot_id: bk.pilot_id, rating: +$('[data-r]', f).value, comment: $('[data-c]', f).value.trim() || null })); U.toast('Thank you for your review', true); api.refresh('sessions'); } catch (e) { busy(btn, false); say($('.amsg', f), ctx.friendly(e)); } };
     }
@@ -151,7 +237,7 @@
 
     return UP.ui.tabs(host, [
       { id: 'overview', label: 'Overview', render: tOverview }, { id: 'matches', label: 'For you', render: tMatches }, { id: 'saved', label: 'Saved', render: tSaved },
-      { id: 'applications', label: 'Applications', render: tApps }, { id: 'sessions', label: 'Sessions', render: tSessions }, { id: 'notes', label: 'Messages', render: UP.dash.notesTab(ctx) }, { id: 'profile', label: 'Profile & settings', render: tProfile }
-    ], { key: 'student', label: 'Student sections', friendly: ctx.friendly, first: ctx.firstTab, fresh: ['overview', 'saved', 'applications', 'sessions', 'notes'] });
+      { id: 'applications', label: 'Applications', render: tApps }, { id: 'documents', label: 'Documents', render: tDocs }, { id: 'sessions', label: 'Sessions', render: tSessions }, { id: 'notes', label: 'Messages', render: UP.dash.notesTab(ctx) }, { id: 'profile', label: 'Profile & settings', render: tProfile }
+    ], { key: 'student', label: 'Student sections', friendly: ctx.friendly, first: ctx.firstTab, fresh: ['overview', 'saved', 'applications', 'documents', 'sessions', 'notes'] });
   };
 })();
