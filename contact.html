@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contact us | UNIPILOT GLOBAL</title><meta name="description" content="Ask UNIPILOT GLOBAL anything about scholarships, applications, pilots or services. We reply personally, usually within one working day."><meta property="og:title" content="Contact us | UNIPILOT GLOBAL"><meta property="og:description" content="Ask UNIPILOT GLOBAL anything about scholarships, applications, pilots or services."><meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Contact us</span><h1>Could not find what you need?</h1><p>Ask us. A real person reads every message and replies within one working day.</p></div></section>
+<section class="sec"><div class="w cgrid">
+<div>
+<div id="out"></div>
+<form class="box f" id="cf" novalidate>
+<div class="w2"><label for="topic">What is your question about?</label><select id="topic"><option value="">Choose a topic</option><option>I could not find a scholarship</option><option>Free materials</option><option>A session with a pilot</option><option>SOP, CV or visa help</option><option>Seminars and events</option><option>My account or dashboard</option><option>Partnership or media</option><option>Something else</option></select></div>
+<div><label for="name">Your name *</label><input id="name" required autocomplete="name"></div>
+<div><label for="email">Email *</label><input id="email" type="email" required autocomplete="email"></div>
+<div class="w2"><label for="msg">Your message *</label><textarea id="msg" rows="5" required placeholder="Tell us what you are looking for. The more detail you give, the better we can help."></textarea></div>
+<div class="w2"><label for="phone">WhatsApp number (optional)</label><input id="phone" type="tel" autocomplete="tel" placeholder="Only if you prefer a reply on WhatsApp"></div>
+<input type="text" id="hp" style="display:none" tabindex="-1" autocomplete="off">
+<div class="w2"><label style="font-weight:500"><input type="checkbox" id="ok" required style="width:auto"> I agree that UNIPILOT GLOBAL may use these details to reply to me. <a href="privacy.html">Privacy</a></label></div>
+<div class="w2"><button class="btn" id="go" type="submit">Send my message</button></div>
+</form></div>
+<aside class="cside">
+<div class="box"><h3>Prefer a quick chat?</h3><p class="mute" style="margin:0 0 12px">Message us directly. We answer personally.</p><div class="cways" id="ways"></div></div>
+<div class="box"><h3>Find the answer faster</h3><ul class="clinks"><li><a href="scholarships.html">Search all scholarships</a></li><li><a href="materials.html">Free guides and templates</a></li><li><a href="pilots.html">Meet our pilots</a></li><li><a href="services.html">Services and visa help</a></li><li><a href="seminars.html">Free seminars</a></li></ul></div>
+</aside></div></section>
+<section class="sec mist"><div class="w" style="max-width:820px"><h2>Quick answers</h2>
+<details class="q"><summary>How fast will you reply?</summary><p class="mute">Usually within one working day. If it is urgent, write on WhatsApp.</p></details>
+<details class="q"><summary>Is it free to ask a question?</summary><p class="mute">Yes. Asking us a question costs nothing. Paid services such as SOP review are always shown with the price before you decide.</p></details>
+<details class="q"><summary>I want a one-to-one session. Should I write here?</summary><p class="mute">No need. Open the <a href="pilots.html">Pilots page</a>, choose a pilot and send a short session request.</p></details>
+<details class="q"><summary>Can you guarantee a scholarship?</summary><p class="mute">No honest advisor can. We help you choose the right scholarships and make your application as strong as it can be.</p></details>
+</div></section>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
+<script src="config.js"></script><script src="accounts.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
+<script>
+let ready = false;
+UP.boot('contact', U => {
+  const { C, $, esc } = U, wa = U.wa('Hello UNIPILOT GLOBAL, I have a question.');
+  $('#ways').innerHTML = (wa ? `<a class="btn wa" href="${wa}" target="_blank" rel="noopener">WhatsApp${C.whatsappDisplay ? ' ' + esc(C.whatsappDisplay) : ''}</a>` : '') + (C.email ? `<a class="btn out" href="mailto:${esc(C.email)}">${esc(C.email)}</a>` : '');
+  if (ready) return; ready = true;
+  const fill = () => { const u = U.sessUser(); if (!u) return; const nm = (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || ''; if (u.email && !$('#email').value) $('#email').value = u.email; if (nm && !$('#name').value) $('#name').value = nm; };
+  fill(); document.addEventListener('up-auth', fill);
+  const t = new URLSearchParams(location.search).get('topic'); if (t) { const o = Array.from($('#topic').options).find(x => x.value.toLowerCase() === t.toLowerCase()); if (o) $('#topic').value = o.value; }
+  $('#cf').onsubmit = async e => {
+    e.preventDefault(); if ($('#hp').value) return;
+    const v = id => $('#' + id).value.trim(), out = $('#out'), btn = $('#go'), label = btn.textContent;
+    if (!v('name') || !/^\S+@\S+\.\S+$/.test(v('email')) || !v('msg') || !$('#ok').checked) { out.innerHTML = '<div class="msg err" role="alert">Please add your name, a valid email, your message, and tick the agreement box.</div>'; out.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    const p = { action: 'contact', website: '', Name: v('name'), Email: v('email'), Topic: v('topic') || 'Not chosen', WhatsApp: v('phone'), Message: v('msg'), Page: location.pathname };
+    btn.disabled = true; btn.textContent = 'Sending...';
+    try { await U.send(p); out.innerHTML = '<div class="msg ok"><b>Thank you, ' + esc(p.Name) + '!</b> We have your message and will reply soon.</div>'; e.target.reset(); fill(); } catch (err) { out.innerHTML = U.failBox(p, 'my question', err); }
+    btn.disabled = false; btn.textContent = label; out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+});
+</script></body></html>

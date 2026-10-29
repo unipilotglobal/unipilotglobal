@@ -115,7 +115,7 @@ header .btn.wa{display:none}header .btn.sm{white-space:nowrap;flex:none}
 #menu[aria-expanded=true] i:nth-child(1){transform:translateY(7px) rotate(45deg)}
 #menu[aria-expanded=true] i:nth-child(2){opacity:0}
 #menu[aria-expanded=true] i:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
-@media(max-width:1320px){
+@media(max-width:1100px){
 #menu{display:flex}
 nav{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;background:#fff;padding:6px 22px 22px;border-bottom:1px solid var(--line);box-shadow:0 26px 40px -26px #0a1a3399;max-height:calc(100vh - 74px);overflow:auto}
 nav.open{display:flex}
@@ -426,3 +426,20 @@ nav{gap:15px}nav a{font-size:.9rem}
 #hdr{display:contents}
 .subnav{top:74px}
 @media(max-width:700px){.subnav{top:62px}.subnav .w{overflow-x:auto;scrollbar-width:none}.subnav a{padding:11px 14px;white-space:nowrap}}
+
+/* ---- v7: no separate "Book a consultation" button; Home lives in the logo on wide screens; badge in the top bar ---- */
+nav a[href="index.html"]{display:none}
+@media(max-width:1100px){nav a[href="index.html"]{display:block}}
+.tb{display:inline-block;background:var(--gold);color:#1d1503;font-size:.66rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;padding:2px 9px;border-radius:99px;margin-right:10px;vertical-align:1px}
+.cbar .cmsg{display:flex;align-items:center;min-width:0}.cbar .cmsg .ml{overflow:hidden;text-overflow:ellipsis}
+.hsign{background:var(--navy);color:#fff;border-color:var(--navy)}.hsign:hover,.hsign.on{background:var(--navy2);border-color:var(--navy2)}
+.hsign.in{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+.hsign .hav{background:var(--gold);color:#1d1503}
+@media(max-width:700px){.tb{margin-right:7px;font-size:.62rem;padding:2px 8px}.hsign.in{background:transparent;border:0}.cbar .cmsg{justify-content:center}.cbar .cmsg .ms:not(a *){margin-right:6px;color:#fff;font-weight:700}}
+
+/* ---- contact page ---- */
+.cgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:32px;align-items:start}
+.cside{display:grid;gap:18px}.cside .box h3{margin:0 0 8px}.cways{display:grid;gap:10px}.cways .btn{justify-content:center;text-align:center;word-break:break-all}
+.clinks{list-style:none;margin:0;padding:0;display:grid;gap:9px}.clinks a{font-weight:600}
+@media(max-width:860px){.cgrid{grid-template-columns:1fr;gap:20px}.cside{order:2}}
+@media(max-width:700px){.cgrid .f{grid-template-columns:1fr}.cgrid .f>div{grid-column:1/-1}}

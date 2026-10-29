@@ -1,43 +1,37 @@
-UNIPILOT GLOBAL - website update 2 (29 October 2026)
+UNIPILOT GLOBAL - website update 3 (29 October 2026)
+Upload this AFTER update 2 (it builds on it).
 
 WHAT CHANGED
-1. SIGN IN IS NOW VISIBLE. A "Sign in" button sits in the top bar on every page (phone and computer).
-   After signing in it turns into a round badge with your first letter. The top bar now stays on screen while you scroll.
-2. SMALL SIGN-IN WINDOW. When someone taps a locked free material, "Save" on a scholarship, or "Save" on a pilot,
-   a small window opens on the same page. They create an account or sign in and carry on. They never leave the page.
-3. PHONE DESIGN REBUILT. Home page is about half as long. Short top bar, compact header, shorter hero,
-   two-column search form, small continent tiles, swipe rows for scholarships and news, compact pilot cards, shorter footer.
-4. WHATSAPP is now a small round icon (bottom right). The text pill is gone.
-5. "PILOTS" is now in the menu.
-6. PILOT PAGE: a "Save" button on each pilot profile, and an optional sign-in strip inside the booking form
-   (signed-in people get their name and email filled in).
-7. GOOGLE BUTTON is built but switched OFF until Google is set up (see below).
+1. COMPUTER MENU: on a computer the full menu is always shown in one clean row. The hamburger (three lines) now only
+   appears on phones and small tablets. "Home" is reached through the logo on a computer.
+2. NO SEPARATE "BOOK A CONSULTATION". The consultation page became the PILOTS page (pilots.html).
+   Every old button now says "Find your pilot" or "Get matched with a pilot". Old links to consultation.html still
+   work: they forward to the Pilots page automatically.
+3. SHORT REQUEST FORM. The long form is now "Request a session" with 5 required answers (name, email, WhatsApp/phone,
+   what you need, degree). Everything else (country, GPA, tests, budget, documents...) is optional and tucked under
+   "Add more details (optional)". Reason: shorter first-contact forms get more enquiries, and the full details will
+   later live in the student's profile so nobody types them twice.
+4. NEW "CONTACT" PAGE (contact.html) and a "Contact" item in the menu. It is for students who did not find what they
+   were looking for: topic, name, email, message, optional WhatsApp, plus WhatsApp/email buttons, quick links
+   and 4 quick answers. Messages arrive in your inbox with the subject "New message: ...".
+5. CLEANER TOP BAR. It now reads: [FREE SEMINAR] Seminar title - date - Reserve your seat. When no seminar is planned it
+   says: "Free scholarship and study-abroad guidance for students worldwide". On phones it is one short line.
 
-THE 9 FILES (replace the old ones; keep the same folders)
-  accounts.js                index.html               scholarships.html
-  consultation.html          opportunity.html
-  assets/site.js             assets/site.css          assets/account.js      assets/account-page.js
-Do NOT touch config.js, content.xlsx or your images. They are not in this package on purpose.
+THE 11 FILES (replace the old ones; keep the same folders)
+  pilots.html (NEW)   contact.html (NEW)   consultation.html (now only forwards to pilots.html)
+  index.html   materials.html   news.html   services.html   opportunity.html   scholarships.html
+  assets/site.js   assets/site.css
+Do NOT touch config.js, accounts.js, content.xlsx or your images.
 
 HOW TO UPLOAD
 1. Unzip. Copy the files into your website folder, choose "Replace". Files inside "assets" go into your assets folder.
-2. GitHub Desktop: write a summary like "Visible sign in, phone design", click Commit, then Push.
-3. Wait 1 to 2 minutes. On the phone, close the tab and open the site again (or open it in a private tab).
-
-TWO SWITCHES IN accounts.js
-  CONFIG.accountsLaunch = true;    change to false to hide Sign in and Save again.
-  CONFIG.googleSignIn   = false;   change to true ONLY after Google is set up in Supabase.
-
-IMPORTANT BEFORE YOU ADVERTISE SIGN-UP
-Supabase's built-in email service only sends to your own team and is very limited. If "Confirm email" is ON in Supabase,
-new visitors may see "We could not send the email right now". Two ways to fix it (I will guide you):
-  a) Quick: Supabase, Authentication, Sign In / Providers, Email: switch "Confirm email" OFF. Sign-up then works at once.
-  b) Better, later: connect a free email sender (Brevo or Resend) and keep "Confirm email" ON.
-Google sign-in does not need email, so it works either way.
+2. GitHub Desktop: summary "Pilots page, Contact page, desktop menu", Commit, Push.
+3. Wait 1 to 2 minutes. Refresh with Ctrl+Shift+R (computer) or open in a private tab (phone).
 
 HONEST NOTES
-- Tested: every account action in a simulated browser against your real database rules (all checks pass), the old
-  site tests, phone and computer screenshots of every page, and no sideways scrolling at 360, 390, 430 and 768 px.
-- Not tested: a real phone, the live Supabase email service, Google sign-in (needs your Google setup).
-- Booking with calendar, prices and payment, the pilot dashboard, the AI assistant and the admin screens are the next big parts.
-- The privacy text on the legal page is a good draft, not legal advice. Have a lawyer read it before launch.
+- Tested: all earlier checks plus new ones for the menu, the Contact page, the old-link forwarding; no sideways scrolling
+  on 11 pages at 4 widths; screenshots on phone and computer.
+- If a message sent from the Contact page cannot be delivered automatically, the visitor sees a box with
+  "Send by email / WhatsApp / Copy my answers" so nothing is lost.
+- Not in this package yet: Student / Pilot sign-in choice, the dashboards, admin tracking of registered students and pilots.
+  Those are the next stage (needs a small database update that I will guide you through).
