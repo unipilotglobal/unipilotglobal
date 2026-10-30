@@ -14,3 +14,5 @@ CONFIG.googleSignIn = false;
 // version of the privacy text people agree to (changes whenever the legal page text changes)
 CONFIG.legal = CONFIG.legal || {};
 CONFIG.legal.updated = '28 October 2026';
+CONFIG.legacyForms = false;
+CONFIG.whatsappRedirect = true;
