@@ -5,7 +5,7 @@
 window.CONFIG = {
   brand: 'UNIPILOT GLOBAL',
   tagline: 'Guide • Educate • Empower',
-  email: 'unipilotglobal@gmail.com',
+  email: 'team@unipilotglobal.com',
   formEmail: '',   // optional: the inbox that receives form requests. Empty = same as email above. Use the address that already got mails from submissions@formsubmit.co
   facebook: 'https://www.facebook.com/profile.php?id=61580476092952',
   linkedin: 'https://www.linkedin.com/company/unipilot-global/',
