@@ -19,3 +19,4 @@ CONFIG.whatsappRedirect = true;
 CONFIG.googleSignIn = true;
 CONFIG.cloudflare = true;
 CONFIG.turnstileSiteKey = '0x4AAAAAAFtUESlquEJxSy9a';
+CONFIG.analyticsToken = 'e55771d7f53d4fb4892aa6408776c7fe';
