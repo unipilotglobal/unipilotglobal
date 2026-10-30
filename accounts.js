@@ -18,3 +18,4 @@ CONFIG.legacyForms = false;
 CONFIG.whatsappRedirect = true;
 CONFIG.googleSignIn = true;
 CONFIG.cloudflare = true;
+CONFIG.turnstileSiteKey = '0x4AAAAAAFtUESlquEJxSy9a';
