@@ -24,8 +24,8 @@ window.CONFIG = {
   scriptUrl: '',
   // If both are empty the site uses FormSubmit (needs ONE activation click in your inbox after the first test). It retries automatically and falls back to a second FormSubmit route.
 
-  whatsapp: '4915214232206', // digits only with country code (can also be set in the Excel "Settings" tab)
-  whatsappDisplay: '+49 152 14232206',   // how the number is shown on the site
+  whatsapp: '', // digits only with country code (can also be set in the Excel "Settings" tab)
+  whatsappDisplay: '',   // how the number is shown on the site
   whatsappMessage: 'Hello UNIPILOT GLOBAL, I would like help with my scholarship application.',
   youtubeChannel: '',
   social: { instagram: '', linkedin: '', tiktok: '', telegram: '', x: '' },   // paste full links; only filled ones are shown
