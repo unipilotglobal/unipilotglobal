@@ -1,6 +1,8 @@
 /* UNIPILOT GLOBAL engine: data loading (Google Sheet or bundled), header/footer, filters, cards. */
 (function () {
   'use strict';
+  // Clickjacking guard: if another website shows this site inside a frame, hide it (the web server cannot send the usual header on this host).
+  try { if (window.top !== window.self) { void window.top.location.href; } } catch (e) { document.documentElement.style.display = 'none'; return; }
   const C = window.CONFIG, BASE = window.BASE || {}, KEY = 'up_payload_v2';
   const $ = (s, e = document) => e.querySelector(s), $$ = (s, e = document) => Array.from(e.querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
@@ -21,6 +23,19 @@
   const cn = x => { const k = String(x).trim().toLowerCase(); return ALIAS[k] || COUNTRIES.find(c => c.toLowerCase() === k) || String(x).trim(); };
   const ALL_RX = /all (academic )?(majors|fields|disciplines)|any (field|discipline|major)/i;
   const derSub = t => { const r = SUBJ.filter(s => s[1].test(t)).map(s => s[0]); if (!r.length || ALL_RX.test(t)) r.push('All fields'); return r; };
+  // The sheet may list subjects in small pieces (e.g. "Computer Science" and "Data & AI"); the filter uses the combined names, so map each piece onto them.
+  const SUBALIAS = { 'computer science': 'Computer Science, Data & AI', 'data & ai': 'Computer Science, Data & AI', 'environment': 'Environment, Water & Energy', 'water & energy': 'Environment, Water & Energy', 'business': 'Business, Economics & Management', 'economics & management': 'Business, Economics & Management', 'law': 'Law, Governance & Public Policy', 'governance & public policy': 'Law, Governance & Public Policy', 'governance & policy': 'Law, Governance & Public Policy', 'architecture': 'Architecture, Arts & Design', 'arts & design': 'Architecture, Arts & Design', 'multiple fields': 'All fields' };
+  const normSub = (list, t) => {
+    const out = [];
+    list.forEach(x => {
+      const k = x.toLowerCase();
+      if (SUBALIAS[k]) return out.push(SUBALIAS[k]);
+      if (k === 'social sciences & law') return out.push('Social Sciences & Humanities', 'Law, Governance & Public Policy');
+      const exact = SUBJECTS.find(n => n.toLowerCase() === k); if (exact || k === 'all fields') return out.push(exact || 'All fields');
+      SUBJ.forEach(s => { if (s[1].test(x)) out.push(s[0]); });
+    });
+    const u = uniq(out); return u.length ? u : derSub(t);
+  };
   const derCty = t => uniq(COUNTRIES.filter(c => new RegExp('\\b' + c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(t)).concat(Object.keys(ALIAS).filter(k => new RegExp('\\b' + k.replace(/\./g, '\\.') + '\\b', 'i').test(t)).map(k => ALIAS[k]), HINT.filter(h => h[0].test(t)).map(h => h[1])));
   const derTags = (t, lv) => { const r = []; if (/women|female/i.test(t)) r.push('Women'); if (/financial need|low-income|need-based|socio/i.test(t)) r.push('Need-based'); if (/professional experience|work experience|mid-career|years? (of )?(full-time )?professional/i.test(t)) r.push('Work experience'); if (/research/i.test(t) && !(lv.length === 1 && lv[0] === 'Bachelor')) r.push('Research'); if (/refugee|displaced/i.test(t)) r.push('Refugee / displaced'); return r; };
   const ytId = u => { const m = String(u || '').match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/); return m ? m[1] : (/^[\w-]{11}$/.test(String(u || '').trim()) ? String(u).trim() : ''); };
@@ -42,7 +57,7 @@
     let rg = g('Region'); rg = /austral|zealand|ocean|pacific/i.test(rg) ? 'Oceania' : /latin|south america|caribb/i.test(rg) ? 'Latin America & Caribbean' : rg;
     const txt = [name, g('Sponsor'), g('Eligibility'), g('Award'), g('Description')].join(' '), fund = g('Funding').toLowerCase(), em = g('Effort').match(/^(very\s+)?(low|medium|high)/i);
     const o = { id: g('ID') || slug(name), type: /intern/i.test(g('Type')) ? 'Internship' : 'Scholarship', name, sponsor: g('Sponsor'), region: rg, levels: lv.length ? lv : ['Master'],
-      subjects: L(g('Subjects')).length ? L(g('Subjects')) : derSub(txt), countries: L(g('Host countries')).length ? L(g('Host countries')).map(cn) : derCty(txt), tags: L(g('Tags')).length ? L(g('Tags')) : derTags(txt, lv),
+      subjects: normSub(L(g('Subjects')), txt), countries: L(g('Host countries')).length ? L(g('Host countries')).map(cn) : derCty(txt), tags: L(g('Tags')).length ? L(g('Tags')) : derTags(txt, lv),
       funding: /^full/.test(fund) ? 'full' : /^stip/.test(fund) ? 'stipend' : 'partial', award: g('Award'), deadline: g('Deadline'), months: months(g('Deadline')), elig: g('Eligibility'),
       effort: g('Effort'), effortLevel: em ? em[2][0].toUpperCase() + em[2].slice(1).toLowerCase() : '', best: g('Best for'), desc: g('Description'), docs: g('Documents') ? g('Documents').split('|').map(s => s.trim()).filter(Boolean) : [],
       tips: g('Expert tips') ? g('Expert tips').split('|').map(s => s.trim()).filter(Boolean) : [], scoring: g('Selection'), past: g('Winners'), link: g('Official link'), video: ytId(g('YouTube')), price: g('Price'), pay: g('Pay link'), featured: /^y/i.test(g('Featured')), closed: /^closed/i.test(g('Status')), added: g('Added on'), verified: g('Verified on'), opens: nd(g('Opens on')), dl: nd(g('Deadline date')) };
@@ -104,9 +119,12 @@
 
   function applySettings(s) {
     const m = { students_base: 'studentsBase', seminars_held: 'seminarsHeld', years_experience: 'yearsExperience', whatsapp: 'whatsapp', youtube_channel: 'youtubeChannel', default_video: 'defaultVideo', facebook: 'facebook', linkedin: 'linkedin' };
-    Object.keys(m).forEach(k => { if (s[k] !== undefined && String(s[k]).trim() !== '') C[m[k]] = k === 'whatsapp' ? String(s[k]).replace(/\D/g, '') : (/_base|_held|years/.test(k) ? +s[k] : String(s[k]).trim()); });
+    Object.keys(m).forEach(k => { if ((k === 'students_base' || k === 'seminars_held') && C.showFixedNumbers !== true) return; if (s[k] !== undefined && String(s[k]).trim() !== '') C[m[k]] = k === 'whatsapp' ? String(s[k]).replace(/\D/g, '') : (/_base|_held|years/.test(k) ? +s[k] : String(s[k]).trim()); });
   }
-  UP.wa = m => C.whatsapp ? 'https://wa.me/' + String(C.whatsapp).replace(/\D/g, '') + '?text=' + encodeURIComponent(m || C.whatsappMessage) : '';
+  // WhatsApp links. With CONFIG.whatsappRedirect = true (accounts.js) the buttons go through your own small "wa" server function, so your number is
+  // not written in any page or file of the site (it lives only in the function's secret). Without it, the old direct wa.me link is used.
+  const waVia = () => C.whatsappVia ? String(C.whatsappVia) : (C.whatsappRedirect === true && C.supabaseUrl ? String(C.supabaseUrl).replace(/\/$/, '') + '/functions/v1/wa' : '');
+  UP.wa = m => { const t = encodeURIComponent(m || C.whatsappMessage || ''), v = waVia(); if (v) return v + (v.includes('?') ? '&' : '?') + 'text=' + t; return C.whatsapp ? 'https://wa.me/' + String(C.whatsapp).replace(/\D/g, '') + '?text=' + t : ''; };
   // ---------- accounts: small shared helpers (the pop-up and Save buttons live in assets/account.js) ----------
   const accRef = (() => { try { return new URL(C.supabaseUrl).hostname.split('.')[0]; } catch (e) { return ''; } })();
   UP.accShown = () => !!(C.supabaseUrl && C.supabaseKey && C.accountsLaunch !== false);
@@ -144,8 +162,23 @@
   // redraws the Sign in / My account links (header, menu, footer) after someone signs in or out
   UP.refreshSign = () => { if (!UP.accLinks()) return; const u = UP.sessUser(), h = document.getElementById('hsign'); if (h) { const t = document.createElement('div'); t.innerHTML = UP.signHTML(); const n = t.firstChild; if (n) { if (document.body.dataset.page === 'account') n.classList.add('on'); h.replaceWith(n); } }
     const nv = document.getElementById('navacc'); if (nv) nv.textContent = u ? 'My account' : 'Sign in'; const ft = document.querySelector('#ftracc a'); if (ft) ft.textContent = u ? 'My account' : 'Sign in or create an account'; };
-  UP.students = () => ({ n: (+C.studentsBase || 0) + UP.count, plus: !(UP.count > 0) });
-  UP.seminarsHeld = () => +C.seminarsHeld || UP.D.seminars.filter(s => !s.up).length;
+  // Numbers shown on the site are real: counts from the database (function fn_public_stats) or from the lists you publish yourself.
+  // The old typed-in numbers (students_base, seminars_held, in config.js or the Settings sheet) are ignored, unless accounts.js says  CONFIG.showFixedNumbers = true;
+  UP.fixedNumbers = () => C.showFixedNumbers === true;
+  UP.students = () => UP.fixedNumbers() ? { n: (+C.studentsBase || 0) + UP.count, plus: !(UP.count > 0) } : { n: 0, plus: false };
+  UP.seminarsHeld = () => (UP.fixedNumbers() && +C.seminarsHeld) || UP.D.seminars.filter(s => !s.up).length;
+  const LIVEKEY = 'up_live_1';
+  UP.live = (() => { try { const j = JSON.parse(sessionStorage.getItem(LIVEKEY) || 'null'); return j && Date.now() - j.t < 600000 ? j.v : null; } catch (e) { return null; } })();
+  UP.loadLive = async () => {
+    if (!C.supabaseUrl || !C.supabaseKey) return null;
+    try {
+      const r = await tfetch(String(C.supabaseUrl).replace(/\/$/, '') + '/rest/v1/rpc/fn_public_stats', { method: 'POST', headers: { apikey: C.supabaseKey, Authorization: 'Bearer ' + C.supabaseKey, 'Content-Type': 'application/json' }, body: '{}' }, 8000);
+      if (!r.ok) return null; const v = await r.json(); if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+      UP.live = v; try { sessionStorage.setItem(LIVEKEY, JSON.stringify({ t: Date.now(), v })); } catch (e) { } return v;
+    } catch (e) { return null; }
+  };
+  // real counts, shown only once they are big enough to mean something
+  UP.liveStats = () => { const L = UP.live || {}, n = (k, min) => (+L[k] >= min ? Math.floor(+L[k]) : 0); return { students: n('students', 10), sessions: n('sessions', 10), pilots: n('pilots', 3), reviews: n('reviews', 5) }; };
   UP.fmtN = n => n.toLocaleString('en-US');
 
   // ---- minimal .xlsx reader (no libraries): lets you keep your content in an Excel file on GitHub
@@ -299,16 +332,18 @@
   }
 
   async function boot(active, render) {
+    UP.beacon();
     let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { }
     const run = p => { UP.D = build(p); applySettings(UP.D.settings); shell(active); render(UP); reveal(); };
     let first = null; try { first = raw ? JSON.parse(raw) : null; } catch (e) { }
-    const dbp = loadDbPilots();
+    const dbp = loadDbPilots(), live = UP.loadLive(), liveWas = JSON.stringify(UP.live);
     run(first);
     let src = null;
     if (C.sheetId) { try { src = await readSheets(C.sheetId); if (!src.opportunities.length) src = null; } catch (e) { src = null; } if (!src) console.warn('Google Sheet not loaded (is it shared as "Anyone with the link: Viewer"?). Using the Excel file instead.'); }
     if (!src && C.contentFile) { try { const r = await fetch(C.contentFile, { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); src = await readXlsx(await r.arrayBuffer()); } catch (e) { console.warn('Content file not loaded; using saved or built-in data.', e); } }
     if (src && src.opportunities.length) { const s = JSON.stringify(src); if (s !== raw) { try { localStorage.setItem(KEY, s); } catch (e) { } run(src); } if (UP.D.dupes.length) console.warn('Same-name rows were merged into one card:', UP.D.dupes); }
     try { const pl = await dbp, sig = JSON.stringify(pl); if (sig !== dbSig && (pl.length || dbSig)) { dbSig = sig; dbPilots = pl; run(src || first); } } catch (e) { }
+    try { const lv = await live; if (lv && JSON.stringify(lv) !== liveWas) run(src || first); } catch (e) { }
     if (C.scriptUrl) { try { const r = await fetch(C.scriptUrl + (C.scriptUrl.includes('?') ? '&' : '?') + 'action=count'), j = await r.json(); if (+j.count >= 0 && +j.count !== UP.count) { UP.count = +j.count; shell(active); render(UP); reveal(); } } catch (e) { } }
   }
   UP.boot = boot;
@@ -318,7 +353,7 @@
   const logo = '<img class="lg" src="images/logo-mark.jpg" alt="UNIPILOT GLOBAL logo" width="63" height="50">';
 
   const dg = s => String(s || '').replace(/\D/g, '');
-  UP.waDisplay = () => C.whatsapp ? (C.whatsappDisplay && dg(C.whatsappDisplay) === dg(C.whatsapp) ? C.whatsappDisplay : '+' + dg(C.whatsapp)) : '';
+  UP.waDisplay = () => waVia() ? '' : C.whatsapp ? (C.whatsappDisplay && dg(C.whatsappDisplay) === dg(C.whatsapp) ? C.whatsappDisplay : '+' + dg(C.whatsapp)) : '';
   const socials = () => [['Facebook', C.facebook], ['LinkedIn', C.linkedin], ['YouTube', C.youtubeChannel]].concat(Object.keys(C.social || {}).map(k => [k === 'x' ? 'X' : k[0].toUpperCase() + k.slice(1), C.social[k]])).filter(x => x[1]);
   function shell(active) {
     const nav0 = C.nav.filter(n => !n.needs || (UP.D[n.needs] || []).length), has = re => nav0.some(n => re.test(n.href)), nav1 = has(/pilots\.html|consultation\.html/) ? nav0 : nav0.slice(0, 2).concat([{ id: 'pilots', label: 'Pilots', href: 'pilots.html' }], nav0.slice(2)), nav = has(/contact\.html/) ? nav1 : nav1.concat([{ id: 'contact', label: 'Contact', href: 'contact.html' }]), w = UP.wa(), up = UP.D.seminars.filter(s => s.up).sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -349,6 +384,34 @@
 
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const tfetch = (u, o, ms) => { const c = new AbortController(), t = setTimeout(() => c.abort(), ms || 15000); return fetch(u, Object.assign({ signal: c.signal }, o)).finally(() => clearTimeout(t)); };
+  // ---------- bot check (Cloudflare Turnstile). Invisible for almost everybody; a small box appears only when a visitor must prove something.
+  // Off until CONFIG.turnstileSiteKey is set (accounts.js). UP.captcha() gives a one-time token, or undefined when the check is off or could not run.
+  let tsLoad = null;
+  const tsScript = () => (tsLoad = tsLoad || new Promise(res => {
+    if (window.turnstile) return res(true);
+    const sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; sc.async = true;
+    sc.onload = () => res(!!window.turnstile); sc.onerror = () => { tsLoad = null; res(false); }; document.head.appendChild(sc);
+  }));
+  UP.captchaOn = () => /^[0-9A-Za-z_-]{10,80}$/.test(String(C.turnstileSiteKey || ''));
+  UP.captcha = async action => {
+    if (!UP.captchaOn()) return undefined;
+    return new Promise(async res => {
+      let done = false, box = null, wid = null;
+      const fin = t => { if (done) return; done = true; clearTimeout(tm); try { if (wid !== null && window.turnstile) window.turnstile.remove(wid); } catch (e) { } if (box) box.remove(); res(t || undefined); };
+      const tm = setTimeout(() => fin(), 45000);
+      if (!(await tsScript())) return fin();
+      if (done) return;
+      box = document.createElement('div'); box.className = 'cf-box'; box.setAttribute('aria-live', 'polite'); document.body.appendChild(box);
+      try { wid = window.turnstile.render(box, { sitekey: C.turnstileSiteKey, action: String(action || 'form').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32), appearance: 'interaction-only', callback: t => fin(t), 'error-callback': () => fin(), 'timeout-callback': () => fin() }); } catch (e) { fin(); }
+    });
+  };
+  // ---------- visitor statistics: Cloudflare Web Analytics (no cookies, no personal profile). Off until CONFIG.analyticsToken is set (accounts.js).
+  // People who send "Do Not Track" or "Global Privacy Control" are not counted.
+  UP.beacon = () => {
+    const t = String(C.analyticsToken || ''); if (!/^[a-f0-9]{32}$/i.test(t) || document.querySelector('script[data-cf-beacon]')) return;
+    if (navigator.doNotTrack === '1' || window.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+    const sc = document.createElement('script'); sc.defer = true; sc.src = 'https://static.cloudflareinsights.com/beacon.min.js'; sc.setAttribute('data-cf-beacon', JSON.stringify({ token: t })); document.head.appendChild(sc);
+  };
   // Sends a form to the owner's inbox. Tries every available route, twice each, before giving up.
   async function send(obj) {
     const flat = {}; Object.keys(obj).forEach(k => { if (k !== 'action' && k !== 'website') flat[k] = obj[k]; });
@@ -356,14 +419,27 @@
     try { const q = JSON.parse(localStorage.getItem('up_outbox') || '[]'); q.push({ t: Date.now(), obj }); localStorage.setItem('up_outbox', JSON.stringify(q.slice(-5))); } catch (e) { }
     const rest = Object.assign({}, flat); delete rest.Name; delete rest.Email; const routes = [], FE = C.formEmail || C.email;
     const auto = 'Thank you for contacting ' + C.brand + '. We have received your message and will reply to you personally soon. ' + C.tagline;
-    if (C.scriptUrl) routes.push(async () => { const r = await tfetch(C.scriptUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(obj) }), j = await r.json(); if (!j.success) throw new Error(j.error || 'Not accepted'); if (typeof j.count === 'number') UP.count = j.count; return j; });
-    if (C.web3formsKey) routes.push(async () => { const r = await tfetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ access_key: C.web3formsKey, subject, from_name: C.brand + ' website', name: obj.Name || '', email: obj.Email, botcheck: '' }, rest)) }), j = await r.json(); if (!j.success) throw new Error(j.message || 'Not accepted'); return j; });
+    // Route 1: our own "contact-form" server function (bot check, saved copy, e-mail straight to your inbox). The old outside routes stay as a backup
+    // until you set  CONFIG.legacyForms = false  in accounts.js (see GUIDE-10).
+    const api = !!(C.supabaseUrl && C.supabaseKey) && C.formsApi !== false, legacy = !api || C.legacyForms !== false;
+    if (api) routes.push(async () => {
+      const token = await UP.captcha('form');
+      const r = await tfetch(String(C.supabaseUrl).replace(/\/$/, '') + '/functions/v1/contact-form', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: C.supabaseKey, Authorization: 'Bearer ' + C.supabaseKey }, body: JSON.stringify(token ? Object.assign({}, obj, { cf_token: token }) : obj) }, 25000);
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j.success) return j;
+      const e = new Error(j.message || j.error || ('HTTP ' + r.status)); e.status = r.status; e.code = j.code;
+      if (r.status === 400 || r.status === 403 || r.status === 413 || r.status === 429) e.final = true;       // refused on purpose (robot, invalid, too many): do not try the backup routes
+      if (r.status === 404 || (r.status === 503 && j.code === 'not_ready')) e.skip = true;                      // the function is not set up yet: go straight to the next route
+      throw e;
+    });
+    if (legacy && C.scriptUrl) routes.push(async () => { const r = await tfetch(C.scriptUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(obj) }), j = await r.json(); if (!j.success) throw new Error(j.error || 'Not accepted'); if (typeof j.count === 'number') UP.count = j.count; return j; });
+    if (legacy && C.web3formsKey) routes.push(async () => { const r = await tfetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ access_key: C.web3formsKey, subject, from_name: C.brand + ' website', name: obj.Name || '', email: obj.Email, botcheck: '' }, rest)) }), j = await r.json(); if (!j.success) throw new Error(j.message || 'Not accepted'); return j; });
     // FormSubmit, route 1: JSON (lets us read the answer)
-    routes.push(async () => { const r = await tfetch('https://formsubmit.co/ajax/' + encodeURIComponent(FE), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ _subject: subject, _template: 'table', _captcha: 'false', _autoresponse: auto, name: obj.Name || '', email: obj.Email }, rest)) }), j = await r.json().catch(() => ({})); if (!r.ok || String(j.success) !== 'true') throw new Error(j.message || 'Not accepted'); return j; });
+    if (legacy) routes.push(async () => { const r = await tfetch('https://formsubmit.co/ajax/' + encodeURIComponent(FE), { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(Object.assign({ _subject: subject, _template: 'table', _captcha: 'false', _autoresponse: auto, name: obj.Name || '', email: obj.Email }, rest)) }), j = await r.json().catch(() => ({})); if (!r.ok || String(j.success) !== 'true') throw new Error(j.message || 'Not accepted'); return j; });
     // FormSubmit, route 2: the classic form post that has always worked for this inbox (answer cannot be read, delivery is by email)
-    routes.push(async () => { const fd = new FormData(); fd.append('_subject', subject); fd.append('_template', 'table'); fd.append('_captcha', 'false'); fd.append('_autoresponse', auto); fd.append('name', obj.Name || ''); fd.append('email', obj.Email || ''); Object.keys(rest).forEach(k => fd.append(k, rest[k])); await tfetch('https://formsubmit.co/' + encodeURIComponent(FE), { method: 'POST', mode: 'no-cors', body: fd }); return { success: true, unconfirmed: true }; });
+    if (legacy) routes.push(async () => { const fd = new FormData(); fd.append('_subject', subject); fd.append('_template', 'table'); fd.append('_captcha', 'false'); fd.append('_autoresponse', auto); fd.append('name', obj.Name || ''); fd.append('email', obj.Email || ''); Object.keys(rest).forEach(k => fd.append(k, rest[k])); await tfetch('https://formsubmit.co/' + encodeURIComponent(FE), { method: 'POST', mode: 'no-cors', body: fd }); return { success: true, unconfirmed: true }; });
     let last; UP.errs = [];
-    for (const go of routes) for (let i = 0; i < 2; i++) { try { const j = await go(); try { localStorage.removeItem('up_outbox'); } catch (e) { } return j; } catch (e) { last = e; UP.errs.push(String(e.message || e)); if (i === 0) await sleep(900); } }
+    for (const go of routes) for (let i = 0; i < 2; i++) { try { const j = await go(); try { localStorage.removeItem('up_outbox'); } catch (e) { } return j; } catch (e) { last = e; UP.errs.push(String(e.message || e)); if (e.final) throw e; if (e.skip) break; if (i === 0) await sleep(900); } }
     throw last;
   }
   // Friendly recovery box: nothing is lost, the visitor can deliver the same answers by email or WhatsApp in one tap.
@@ -428,13 +504,14 @@
   const av = n => `<span class="av">${esc(String(n).slice(0, 1))}</span>`;
   // Side-by-side scrolling list with arrows (swipe works on phones).
   UP.car = el => { if (!el) return; el.classList.remove('grid', 'three'); el.classList.add('car'); let w = el.parentNode; if (!w.classList.contains('carw')) { w = document.createElement('div'); w.className = 'carw'; el.parentNode.insertBefore(w, el); w.appendChild(el); w.insertAdjacentHTML('beforeend', '<button type="button" class="cb prev" aria-label="Previous">&#8249;</button><button type="button" class="cb next" aria-label="Next">&#8250;</button>'); w.addEventListener('click', e => { const b = e.target.closest('.cb'); if (b) el.scrollBy({ left: (b.classList.contains('next') ? 1 : -1) * el.clientWidth * .85, behavior: 'smooth' }); }); el._u = () => { w.classList.toggle('noscroll', el.scrollWidth <= el.clientWidth + 4); w.querySelector('.prev').disabled = el.scrollLeft < 4; w.querySelector('.next').disabled = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4; }; el.addEventListener('scroll', el._u, { passive: true }); window.addEventListener('resize', el._u); } el.scrollLeft = 0; setTimeout(el._u, 60); };
-  { const nc0 = UP.newsCard; UP.newsCard = n => { const h = nc0(n); return n.photo ? h.replace(/^(<[a-z]+[^>]*>)/, '$1<img class="nph" src="' + esc(n.photo) + '" alt="" loading="lazy" onerror="this.remove()">') : h; }; }
-  UP.reviewCard = r => `<figure class="box rev"><div class="stars" aria-label="${r.rating} out of 5">${r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : ''}</div><blockquote>${esc(r.text)}</blockquote><figcaption>${r.photo ? `<img src="${esc(r.photo)}" alt="" loading="lazy" data-n="${esc(String(r.name || '?').slice(0, 1))}" onerror="UP.imgFail(this)">` : av(r.name)}<span><b>${esc(r.name)}</b><br><span class="mute">${esc([r.country, r.result].filter(Boolean).join(' · '))}</span></span></figcaption></figure>`;
+  { const nc0 = UP.newsCard; UP.newsCard = n => { const h = nc0(n); return n.photo ? h.replace(/^(<[a-z]+[^>]*>)/, '$1<img class="nph" src="' + esc(n.photo) + '" alt="" loading="lazy" data-err="rm">') : h; }; }
+  UP.reviewCard = r => `<figure class="box rev"><div class="stars" aria-label="${r.rating} out of 5">${r.rating ? '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating) : ''}</div><blockquote>${esc(r.text)}</blockquote><figcaption>${r.photo ? `<img src="${esc(r.photo)}" alt="" loading="lazy" data-n="${esc(String(r.name || '?').slice(0, 1))}" data-err="fail">` : av(r.name)}<span><b>${esc(r.name)}</b><br><span class="mute">${esc([r.country, r.result].filter(Boolean).join(' · '))}</span></span></figcaption></figure>`;
   // Photos never show a broken icon: try images/ then the top folder, then fall back to the initial.
   UP.imgFail = el => { if (el.dataset.a && !el.dataset.t) { el.dataset.t = 1; el.src = el.dataset.a; return; } const s = document.createElement('span'); s.className = el.closest('.mph') ? 'avl' : 'av'; s.textContent = el.dataset.n || '?'; el.replaceWith(s); };
-  UP.photoHTML = e => e.photo ? `<img src="${esc(e.photo)}" alt="${esc(e.name)}" loading="lazy" data-n="${esc(e.name.slice(0, 1))}" data-a="${esc(e.alt || '')}" onerror="UP.imgFail(this)">` : `<span class="avl">${esc(e.name.slice(0, 1))}</span>`;
+  document.addEventListener('error', e => { const t = e.target; if (!t || t.tagName !== 'IMG' || !t.dataset) return; if (t.dataset.err === 'fail') UP.imgFail(t); else if (t.dataset.err === 'rm') t.remove(); }, true);
+  UP.photoHTML = e => e.photo ? `<img src="${esc(e.photo)}" alt="${esc(e.name)}" loading="lazy" data-n="${esc(e.name.slice(0, 1))}" data-a="${esc(e.alt || '')}" data-err="fail">` : `<span class="avl">${esc(e.name.slice(0, 1))}</span>`;
   UP.FLAGS = {"afghanistan":"af","albania":"al","algeria":"dz","andorra":"ad","angola":"ao","antigua and barbuda":"ag","argentina":"ar","armenia":"am","australia":"au","austria":"at","azerbaijan":"az","bahamas":"bs","bahrain":"bh","bangladesh":"bd","barbados":"bb","belarus":"by","belgium":"be","belize":"bz","benin":"bj","bhutan":"bt","bolivia":"bo","bosnia and herzegovina":"ba","botswana":"bw","brazil":"br","brunei":"bn","bulgaria":"bg","burkina faso":"bf","burundi":"bi","cabo verde":"cv","cambodia":"kh","cameroon":"cm","canada":"ca","central african republic":"cf","chad":"td","chile":"cl","china":"cn","colombia":"co","comoros":"km","costa rica":"cr","croatia":"hr","cuba":"cu","cyprus":"cy","czech republic":"cz","denmark":"dk","djibouti":"dj","dominica":"dm","dominican republic":"do","dr congo":"cd","ecuador":"ec","egypt":"eg","el salvador":"sv","equatorial guinea":"gq","eritrea":"er","estonia":"ee","eswatini":"sz","ethiopia":"et","fiji":"fj","finland":"fi","france":"fr","gabon":"ga","gambia":"gm","georgia":"ge","germany":"de","ghana":"gh","greece":"gr","grenada":"gd","guatemala":"gt","guinea":"gn","guinea-bissau":"gw","guyana":"gy","haiti":"ht","honduras":"hn","hong kong":"hk","hungary":"hu","iceland":"is","india":"in","indonesia":"id","iran":"ir","iraq":"iq","ireland":"ie","israel":"il","italy":"it","ivory coast":"ci","jamaica":"jm","japan":"jp","jordan":"jo","kazakhstan":"kz","kenya":"ke","kiribati":"ki","kosovo":"xk","kuwait":"kw","kyrgyzstan":"kg","laos":"la","latvia":"lv","lebanon":"lb","lesotho":"ls","liberia":"lr","libya":"ly","liechtenstein":"li","lithuania":"lt","luxembourg":"lu","macau":"mo","madagascar":"mg","malawi":"mw","malaysia":"my","maldives":"mv","mali":"ml","malta":"mt","marshall islands":"mh","mauritania":"mr","mauritius":"mu","mexico":"mx","micronesia":"fm","moldova":"md","monaco":"mc","mongolia":"mn","montenegro":"me","morocco":"ma","mozambique":"mz","myanmar":"mm","namibia":"na","nauru":"nr","nepal":"np","netherlands":"nl","new zealand":"nz","nicaragua":"ni","niger":"ne","nigeria":"ng","north korea":"kp","north macedonia":"mk","norway":"no","oman":"om","pakistan":"pk","palau":"pw","palestine":"ps","panama":"pa","papua new guinea":"pg","paraguay":"py","peru":"pe","philippines":"ph","poland":"pl","portugal":"pt","puerto rico":"pr","qatar":"qa","republic of the congo":"cg","romania":"ro","russia":"ru","rwanda":"rw","saint kitts and nevis":"kn","saint lucia":"lc","saint vincent and the grenadines":"vc","samoa":"ws","san marino":"sm","sao tome and principe":"st","saudi arabia":"sa","senegal":"sn","serbia":"rs","seychelles":"sc","sierra leone":"sl","singapore":"sg","slovakia":"sk","slovenia":"si","solomon islands":"sb","somalia":"so","south africa":"za","south korea":"kr","south sudan":"ss","spain":"es","sri lanka":"lk","sudan":"sd","suriname":"sr","sweden":"se","switzerland":"ch","syria":"sy","taiwan":"tw","tajikistan":"tj","tanzania":"tz","thailand":"th","timor-leste":"tl","togo":"tg","tonga":"to","trinidad and tobago":"tt","tunisia":"tn","turkey":"tr","turkmenistan":"tm","tuvalu":"tv","uganda":"ug","ukraine":"ua","united arab emirates":"ae","united kingdom":"gb","united states":"us","uruguay":"uy","uzbekistan":"uz","vanuatu":"vu","vatican city":"va","venezuela":"ve","vietnam":"vn","yemen":"ye","zambia":"zm","zimbabwe":"zw","t\u00fcrkiye":"tr","czechia":"cz","usa":"us","uk":"gb","cape verde":"cv","cote d'ivoire":"ci","congo (drc)":"cd","democratic republic of the congo":"cd","swaziland":"sz","macedonia":"mk","uae":"ae","burma":"mm","east timor":"tl","the gambia":"gm"};
-  UP.flag = n => { const c = UP.FLAGS[String(n).trim().toLowerCase()]; return c ? `<img class="fl" src="images/flags/${c}.svg" alt="" title="${esc(n)}" width="24" height="18" loading="lazy" onerror="this.remove()">` : ''; };
+  UP.flag = n => { const c = UP.FLAGS[String(n).trim().toLowerCase()]; return c ? `<img class="fl" src="images/flags/${c}.svg" alt="" title="${esc(n)}" width="24" height="18" loading="lazy" data-err="rm">` : ''; };
   // Side drawer for filters (button next to the search bar). Used by the finder and the pilot page.
   UP.drawerInit = () => { const dr = document.getElementById('fdrawer'), bg = document.getElementById('fdbg'); if (!dr || dr._i) return; dr._i = 1;
     const open = () => { bg.hidden = false; dr.hidden = false; requestAnimationFrame(() => dr.classList.add('open')); document.body.style.overflow = 'hidden'; }, shut = () => { dr.classList.remove('open'); bg.hidden = true; document.body.style.overflow = ''; setTimeout(() => { if (!dr.classList.contains('open')) dr.hidden = true; }, 260); };

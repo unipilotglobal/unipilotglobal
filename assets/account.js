@@ -24,8 +24,11 @@
     document.head.appendChild(s);
   }));
 
+  // the bot check (Cloudflare Turnstile); a one-time token, or undefined when the check is off
+  const cap = async a => { try { return window.UP && window.UP.captcha ? await window.UP.captcha(a) : undefined; } catch (e) { return undefined; } };
   const friendly = e => {
     const m = String((e && (e.message || e.error_description)) || e || '').toLowerCase(), code = String((e && e.code) || '').toLowerCase();
+    if (m.includes('captcha')) return 'We could not confirm that you are a person. Please try again. If it keeps failing, switch off ad or tracking blockers for this page, or write to us.';
     if (m.includes('invalid login')) return 'That email and password do not match. Please try again, or use "Forgot password".';
     if (m.includes('email not confirmed')) return 'Please confirm your email first: open the message we sent you and click the link.';
     if (m.includes('already registered') || m.includes('already been registered')) return 'This email already has an account. Please use "Sign in" instead.';
@@ -36,11 +39,13 @@
     if (m.includes('exceeded the maximum') || m.includes('payload too large')) return 'This file is larger than 10 MB. Please make it smaller and try again.';
     if (m.includes('mime type')) return 'This file type is not allowed. Please use PDF, Word, JPG, PNG or text.';
     if (m.includes('failed to fetch') || m.includes('network')) return 'Connection problem. Please check your internet and try again.';
+    if (m.includes('invalid totp') || (m.includes('mfa') && (m.includes('invalid') || m.includes('verification failed')))) return 'That code is not right. Open your authenticator app and type the newest 6-digit code.';
+    if (m.includes('mfa') && (m.includes('disabled') || m.includes('not enabled'))) return 'Two-step login is not switched on in Supabase yet. Please follow GUIDE-8 (Authentication > Sign In / Providers > Multi-Factor, turn on the authenticator app option).';
     return 'Something went wrong: ' + (e && e.message ? e.message : 'please try again') + '.';
   };
 
   const acc = UP.acc = {
-    on, shown, google, esc, friendly, isEmail, GICON,
+    on, shown, google, esc, friendly, cap, isEmail, GICON,
     // Who is signed in, WITHOUT loading the library (used for the header link). Not a security check: only a hint.
     peek() { try { const j = JSON.parse(localStorage.getItem(STORE) || 'null'); return (j && j.user) || null; } catch (e) { return null; } },
     client() {
@@ -134,7 +139,7 @@
               if (!q('#adk').checked) return say('Please tick the box to agree to the Privacy notice and Terms.');
               const n = q('#adn').value.trim(), mk = q('#adm2').checked; busy(b, true, 'Creating your account…'); say('');
               try {
-                const r = await sb.auth.signUp({ email: e, password: p, options: { data: { full_name: n }, emailRedirectTo: acc.pageUrl(acc.here()) } });
+                const tk = await cap('signup'); const r = await sb.auth.signUp({ email: e, password: p, options: Object.assign({ data: { full_name: n }, emailRedirectTo: acc.pageUrl(acc.here()) }, tk ? { captchaToken: tk } : {}) });
                 if (r.error) throw r.error;
                 try { localStorage.setItem('up_pc', JSON.stringify({ e: e.toLowerCase(), v: version(), mk })); } catch (x) { }
                 if (r.data.session) { const u = r.data.session.user; await acc.recordConsent(sb, u.id, mk); try { localStorage.removeItem('up_pc'); } catch (x) { } success(u); }
@@ -142,7 +147,7 @@
               } catch (x) { say(friendly(x)); busy(b, false); }
             } else {
               if (!p) return say('Please enter your password.'); busy(b, true, 'Signing in…'); say('');
-              try { const r = await sb.auth.signInWithPassword({ email: e, password: p }); if (r.error) throw r.error; await afterSignIn(r.data.user || r.data.session.user); } catch (x) { say(friendly(x)); busy(b, false); }
+              try { const tk = await cap('signin'); const r = await sb.auth.signInWithPassword(Object.assign({ email: e, password: p }, tk ? { options: { captchaToken: tk } } : {})); if (r.error) throw r.error; await afterSignIn(r.data.user || r.data.session.user); } catch (x) { say(friendly(x)); busy(b, false); }
             }
           };
         };

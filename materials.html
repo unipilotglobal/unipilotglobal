@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Free scholarship materials | UNIPILOT GLOBAL</title><meta name="description" content="Free SOP and CV templates, checklists, sample documents and video guides for scholarship applicants."><meta property="og:title" content="Free scholarship materials | UNIPILOT GLOBAL"><meta property="og:description" content="Free SOP and CV templates, checklists, sample documents and video guides for scholarship applicants."><meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://gqhqvwwdrnrxwgfolxvu.supabase.co https://challenges.cloudflare.com https://cloudflareinsights.com https://docs.google.com https://formsubmit.co https://api.web3forms.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://challenges.cloudflare.com; media-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" data-csp><meta name="referrer" content="strict-origin-when-cross-origin" data-csp><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Free scholarship materials | UNIPILOT GLOBAL</title><meta name="description" content="Free SOP and CV templates, checklists, sample documents and video guides for scholarship applicants."><meta property="og:title" content="Free scholarship materials | UNIPILOT GLOBAL"><meta property="og:description" content="Free SOP and CV templates, checklists, sample documents and video guides for scholarship applicants."><meta property="og:type" content="website"><link rel="canonical" href="https://unipilotglobal.com/materials.html"><meta property="og:url" content="https://unipilotglobal.com/materials.html"><meta property="og:site_name" content="UNIPILOT GLOBAL"><meta property="og:image" content="https://unipilotglobal.com/images/og-card.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="assets/fonts/dm-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="assets/fonts/fraunces-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" type="image/png" href="images/favicon.png"><link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-<link rel="stylesheet" href="assets/site.css"></head><body><div id="hdr"></div><main>
+<link rel="stylesheet" href="assets/site.css"></head><body><a class="skip" href="#main">Skip to content</a><div id="hdr"></div><main id="main" tabindex="-1">
 <section class="phead"><div class="w"><span class="eyebrow" style="color:var(--gold)">Free materials</span><h1>Free guides, templates and checklists</h1><p>Everything we share to help you win a scholarship: SOP and CV templates, checklists, sample documents and video guides.</p></div></section>
 <section class="sec"><div class="w"><div class="mbar"><input id="ms" type="search" placeholder="Search, for example SOP, CV, DAAD" aria-label="Search materials"><div class="chips" id="mt"></div></div><div class="mgrid" id="ml"></div>
 <section class="hub" id="hub"><span class="eyebrow" style="color:var(--gold)">Prepare for every step</span><h2>Choose what you want to master today</h2><p>Test prep, SOP, CV and interviews. Open a topic to see its free materials and video guide.</p><div class="tg" id="tg"></div></section>
@@ -12,29 +11,4 @@
 </main>
 <dialog class="m2" id="td" aria-label="Topic"></dialog><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this site.</p></noscript>
 <script src="config.js"></script><script src="accounts.js"></script><script src="data/base.js"></script><script src="assets/site.js"></script>
-<script>
-let ty = '', q = '', dt = false;
-UP.boot('materials', U => {
-  const { $, $$, esc, D } = U, types = Array.from(new Set(D.materials.map(m => m.type)));
-  $('#mt').innerHTML = D.materials.length ? ['All'].concat(types).map(c => `<button class="chip ${(c === 'All' ? '' : c) === ty ? 'on' : ''}" data-c="${esc(c === 'All' ? '' : c)}">${esc(c)}</button>`).join('') : '';
-  $('#mt').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { ty = b.dataset.c; list(); } };
-  $('#ms').oninput = e => { q = e.target.value.toLowerCase(); list(); };
-  function list() {
-    $$('.chip', $('#mt')).forEach(b => b.classList.toggle('on', b.dataset.c === ty));
-    const l = D.materials.filter(m => (!ty || m.type === ty) && (!q || (m.title + ' ' + m.text + ' ' + m.cat + ' ' + m.rel.join(' ')).toLowerCase().includes(q)));
-    $('#ml').innerHTML = l.length ? l.map(U.matCard).join('') : D.materials.length ? '<p class="mute">Nothing matches your search yet.</p>' : '<div class="box c" style="grid-column:1/-1"><h3>Free materials are coming soon</h3><p class="mute">We are preparing guides, templates and checklists. Message us on WhatsApp if you need something specific.</p></div>';
-  }
-  list();
-  const open = d => { if (d.showModal) d.showModal(); else d.setAttribute('open', ''); }, shut = d => { if (d.close) d.close(); else d.removeAttribute('open'); };
-  const topic = t => { if (!t) return; const ms = U.matForTopic(t), yq = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(t.q || (t.name + ' tips for scholarship applicants'));
-    $('#td').innerHTML = `<button class="x" type="button" data-x aria-label="Close">&times;</button><div class="in"><div class="th"><span class="ti big">${esc(t.icon)}</span><div><h2 style="margin:0">${esc(t.name)}</h2><p class="mute" style="margin:6px 0 0">${esc(t.text)}</p></div></div>
-    <h4 class="sh">Video guide</h4>${t.vid ? U.video(t.vid, t.name) : `<a class="ytq" href="${yq}" target="_blank" rel="noopener"><span class="pl">&#9654;</span><div><b>Watch ${esc(t.name)} videos on YouTube</b><small>Our own video guide is coming soon. Meanwhile, see the best free videos.</small></div></a>`}
-    <h4 class="sh">Free materials</h4>${ms.length ? `<div class="mgrid">${ms.map(U.matCard).join('')}</div>` : '<p class="mute">We are adding materials for this topic. Message us on WhatsApp if you need something specific.</p>'}
-    <div class="box c" style="margin-top:24px"><h3>Want an expert to check your ${esc(t.name)}?</h3><a class="btn" href="pilots.html?form=1">Find your pilot</a></div></div>`; open($('#td')); try { history.replaceState(null, '', '?topic=' + t.id); } catch (x) { } };
-  $('#tg').innerHTML = D.topics.map(t => { const n = U.matForTopic(t).length; return `<button type="button" class="tile2" data-tp="${esc(t.id)}"><span class="ti">${esc(t.icon)}</span><b>${esc(t.name)}</b><small>${n ? n + (n === 1 ? ' free material' : ' free materials') : 'Videos and tips'}</small></button>`; }).join('');
-  $('#tg').onclick = e => { const b = e.target.closest('[data-tp]'); if (b) topic(D.topics.find(t => t.id === b.dataset.tp)); };
-  $('#td').onclick = e => { if (e.target.closest('[data-x]') || e.target === $('#td')) shut($('#td')); };
-  $('#td').onclose = () => { try { history.replaceState(null, '', location.pathname); } catch (x) { } };
-  const tp = new URLSearchParams(location.search).get('topic'); if (tp && !dt) { const t = D.topics.find(x => x.id === tp); if (t) { dt = true; topic(t); } }
-});
-</script></body></html>
+<script src="assets/pg-materials.js"></script></body></html>

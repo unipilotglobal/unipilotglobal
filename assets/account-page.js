@@ -61,17 +61,17 @@
       ev.preventDefault(); const e = $('#e1').value.trim(), p = $('#p1').value;
       if (!isEmail(e) || !p) return say('#m1', 'Please enter your email and password.');
       const b = $('#b1'); busy(b, true, 'Signing in…'); say('#m1', '');
-      try { const r = await sb.auth.signInWithPassword({ email: e, password: p }); if (r.error) throw r.error; } catch (x) { say('#m1', friendly(x)); busy(b, false); }
+      try { const tk = await A.cap('signin'); const r = await sb.auth.signInWithPassword(Object.assign({ email: e, password: p }, tk ? { options: { captchaToken: tk } } : {})); if (r.error) throw r.error; } catch (x) { say('#m1', friendly(x)); busy(b, false); }
     };
     $('#fg').onclick = async ev => {
       ev.preventDefault(); const e = $('#e1').value.trim(); if (!isEmail(e)) return say('#m1', 'Type your email above first, then click "Forgot password?" again.');
       say('#m1', 'Sending…', true);
-      try { const r = await sb.auth.resetPasswordForEmail(e, { redirectTo: A.pageUrl('account.html') }); if (r.error && /rate|too many|smtp|sending|authorized/i.test(r.error.message)) throw r.error; say('#m1', 'If that email has an account, a link to choose a new password is on its way. It can take a few minutes.', true); } catch (x) { say('#m1', friendly(x)); }
+      try { const tk = await A.cap('reset'); const r = await sb.auth.resetPasswordForEmail(e, Object.assign({ redirectTo: A.pageUrl('account.html') }, tk ? { captchaToken: tk } : {})); if (r.error && /rate|too many|smtp|sending|authorized/i.test(r.error.message)) throw r.error; say('#m1', 'If that email has an account, a link to choose a new password is on its way. It can take a few minutes.', true); } catch (x) { say('#m1', friendly(x)); }
     };
     $('#ml').onclick = async ev => {
       ev.preventDefault(); const e = $('#e1').value.trim(); if (!isEmail(e)) return say('#m1', 'Type your email above first, then click the link again.');
       say('#m1', 'Sending…', true);
-      try { const r = await sb.auth.signInWithOtp({ email: e, options: { shouldCreateUser: false, emailRedirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) } }); if (r.error && /rate|too many|smtp|sending|authorized/i.test(r.error.message)) throw r.error; say('#m1', 'If that email has an account, a sign-in link is on its way. It can take a few minutes. New here? Use "Create account".', true); } catch (x) { say('#m1', friendly(x)); }
+      try { const tk = await A.cap('magic'); const r = await sb.auth.signInWithOtp({ email: e, options: Object.assign({ shouldCreateUser: false, emailRedirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) }, tk ? { captchaToken: tk } : {}) }); if (r.error && /rate|too many|smtp|sending|authorized/i.test(r.error.message)) throw r.error; say('#m1', 'If that email has an account, a sign-in link is on its way. It can take a few minutes. New here? Use "Create account".', true); } catch (x) { say('#m1', friendly(x)); }
     };
   }
 
@@ -84,7 +84,7 @@
       if (!$('#k2').checked) return say('#m2', 'Please tick the box to agree to the Privacy notice and Terms.');
       const b = $('#b2'); busy(b, true, 'Creating your account…'); say('#m2', '');
       try {
-        const r = await sb.auth.signUp({ email: e, password: p, options: { data: as === 'pilot' ? { full_name: n, account_type: 'pilot' } : { full_name: n }, emailRedirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) } });
+        const tk = await A.cap('signup'); const r = await sb.auth.signUp({ email: e, password: p, options: Object.assign({ data: as === 'pilot' ? { full_name: n, account_type: 'pilot' } : { full_name: n }, emailRedirectTo: A.pageUrl('account.html' + (next ? '?next=' + encodeURIComponent(next) : '')) }, tk ? { captchaToken: tk } : {}) });
         if (r.error) throw r.error;
         try { localStorage.setItem('up_pc', JSON.stringify({ e: e.toLowerCase(), v: VERSION, mk })); } catch (x) { }
         if (!r.data.session) { root().innerHTML = '<div class="acol"><div class="box c"><h3>Check your inbox</h3><p>We sent a confirmation link to <b>' + esc(e) + '</b>. Open it to finish creating your account' + (as === 'pilot' ? ' and start your pilot profile' : '') + '. It can take a few minutes; please also look in your spam folder.</p><p class="mute"><a href="account.html">Back to sign in</a></p></div></div>'; head('Almost done', 'Confirm your email to finish.'); }
@@ -106,12 +106,23 @@
   }
 
   // ------------------------------------------------------------------ signed in
+  // the pilot's own row: public columns first, then their private commission and agreement details from v_pilot_terms
+  // (before the database update they are still ordinary columns, so both states work)
+  async function loadPilotRow(uid) {
+    const B = 'id,slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url,timezone,status,rating_avg,rating_count,created_at,updated_at', T = 'commission_bps,contract_version,contract_accepted_at';
+    const get = (cols, from) => sb.from(from).select(cols).eq('id', uid).maybeSingle();
+    let r = await get(B + ',education,highlights,based_in,tagline', 'pilots'); if (r.error) r = await get(B, 'pilots');
+    if (r.error || !r.data) return r;
+    let t = await get(T, 'v_pilot_terms'); if (t.error) t = await get(T, 'pilots');
+    if (!t.error && t.data) Object.assign(r.data, t.data);
+    return r;
+  }
   async function loadAll(uid) {
     const q = [
       sb.from('profiles').select('full_name,phone,country,timezone,marketing_opt_in,onboarding,deleted_at').eq('id', uid).maybeSingle(),
       sb.from('user_roles').select('role').eq('user_id', uid),
       sb.from('consents').select('kind,version').eq('user_id', uid),
-      sb.from('pilots').select('*').eq('id', uid).maybeSingle()];
+      loadPilotRow(uid)];
     const r = await Promise.all(q), bad = r.find(x => x.error); if (bad) throw bad.error;
     return { pr: r[0].data, roles: (r[1].data || []).map(x => x.role), cons: r[2].data || [], pilot: r[3].data };
   }
@@ -138,7 +149,65 @@
     }
     // a pilot whose login was created by the team must choose their own password first
     if (d.pr.onboarding && d.pr.onboarding.must_change_password) return showPwGate(d, view);
+    if (d.roles.some(r => TEAM.includes(r))) { const g = await mfaGate(); if (g) return showMfa(g, view); }
     mountShell(d, view);
+  }
+
+  // ------------------------------------------------------------------ 2-step login for the team (admin, finance, support)
+  // The real lock is in the database (Admin > Overview > Team security switches it on). These screens only help people through it.
+  const TEAM = ['admin', 'finance', 'support'];
+  let mfaLater = false;                                     // "Not now" is allowed until the team switch is ON
+  async function mfaGate() {
+    try {
+      const a = await sb.auth.mfa.getAuthenticatorAssuranceLevel(), l = await sb.auth.mfa.listFactors();
+      if (a.error || l.error || !a.data || !l.data) return null;         // the feature is not available: never block anybody here
+      const totp = l.data.totp || [];
+      if (totp.length) return a.data.currentLevel === 'aal2' ? null : { mode: 'verify', factorId: totp[0].id };
+      const s = await sb.from('app_settings').select('value').eq('key', 'require_admin_mfa').maybeSingle();
+      const must = !s.error && !!s.data && (s.data.value === true || s.data.value === 'true');
+      return must || !mfaLater ? { mode: 'enroll', must } : null;
+    } catch (e) { return null; }
+  }
+  function showMfa(g, view) {
+    const code = () => $('#mfc').value.replace(/\s/g, '');
+    const done = () => setTimeout(() => { if ($('#mfaf')) route(); }, 900);        // the sign-in library normally tells us itself; this is only a safety net
+    if (g.mode === 'verify') {
+      head('Two-step check', 'Please confirm that it is really you.');
+      root().innerHTML = `<div class="acol"><form class="box f" id="mfaf" novalidate><p class="w2" style="margin:0">Open your authenticator app and type the current 6-digit code for UniPilot Global.</p>
+        <div class="w2"><label for="mfc">6-digit code</label><input id="mfc" inputmode="numeric" autocomplete="one-time-code" maxlength="7" style="max-width:200px;letter-spacing:.2em;font-size:1.3rem"></div>
+        <div class="w2"><button class="btn lg" id="mfb" type="submit">Continue</button> <button class="btn out" id="mfo" type="button">Sign out</button></div><p class="w2 amsg" id="mfm" role="status" aria-live="polite"></p></form></div>`;
+      $('#mfo').onclick = () => sb.auth.signOut(); $('#mfc').focus();
+      $('#mfaf').onsubmit = async ev => {
+        ev.preventDefault(); if (!/^\d{6}$/.test(code())) return say('#mfm', 'Please type the 6 digits from your app.');
+        const b = $('#mfb'); busy(b, true, 'Checking…');
+        try { const r = await sb.auth.mfa.challengeAndVerify({ factorId: g.factorId, code: code() }); if (r.error) throw r.error; done(); } catch (x) { say('#mfm', friendly(x)); busy(b, false); }
+      };
+      return;
+    }
+    head('Protect the team account', g.must ? 'Your team now requires 2-step login. It takes about two minutes.' : 'This account can see every student and approve payments, so it needs a second step.');
+    root().innerHTML = `<div class="acol"><div class="box f" id="mfaf"><ol class="w2" style="margin:0;padding-left:1.2em"><li>Install an authenticator app on your phone (for example Google Authenticator, Microsoft Authenticator, 2FAS or Aegis).</li><li>In the app choose “add account” and scan the picture below.</li><li>Type the 6-digit code that the app shows, and press the button.</li></ol>
+      <div class="w2" id="mfq" style="text-align:center"><p class="mute">Preparing your code…</p></div>
+      <form class="w2" id="mff" novalidate><label for="mfc">6-digit code</label><input id="mfc" inputmode="numeric" autocomplete="one-time-code" maxlength="7" style="max-width:200px;letter-spacing:.2em;font-size:1.3rem">
+        <div style="margin-top:12px"><button class="btn lg" id="mfb" type="submit">Turn on 2-step login</button> ${g.must ? '' : '<button class="btn out" id="mfl" type="button">Not now</button> '}<button class="btn out" id="mfo" type="button">Sign out</button></div></form>
+      <p class="w2 amsg" id="mfm" role="status" aria-live="polite"></p></div></div>`;
+    $('#mfo').onclick = () => sb.auth.signOut(); const later = $('#mfl'); if (later) later.onclick = () => { mfaLater = true; showDash(view); };
+    let fid = null;
+    (async () => {
+      try {
+        const l = await sb.auth.mfa.listFactors();                          // an earlier, unfinished set-up would block a new one
+        for (const f of ((l.data && l.data.all) || [])) if (f.factor_type === 'totp' && f.status !== 'verified') await sb.auth.mfa.unenroll({ factorId: f.id });
+        const r = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniPilot ' + new Date().toISOString().slice(0, 16) }); if (r.error) throw r.error;
+        fid = r.data.id; const q = $('#mfq'); if (!q) return; q.textContent = '';
+        const img = new Image(); img.alt = 'QR code to scan with your authenticator app'; img.width = 200; img.height = 200; img.src = r.data.totp.qr_code; q.appendChild(img);
+        const k = document.createElement('p'); k.className = 'mute'; k.style.cssText = 'margin:8px 0 0;font-size:.9rem';
+        k.innerHTML = 'Cannot scan? Type this key into the app: <b style="letter-spacing:.05em;word-break:break-all">' + esc(r.data.totp.secret) + '</b><br>Save this key in your password manager. It lets you set up a new phone.'; q.appendChild(k);
+      } catch (x) { const q = $('#mfq'); if (q) q.innerHTML = '<p class="amsg bad">' + esc(friendly(x)) + '</p>'; }
+    })();
+    $('#mff').onsubmit = async ev => {
+      ev.preventDefault(); if (!fid) return say('#mfm', 'Please wait until the picture appears.'); if (!/^\d{6}$/.test(code())) return say('#mfm', 'Please type the 6 digits from your app.');
+      const b = $('#mfb'); busy(b, true, 'Checking…');
+      try { const r = await sb.auth.mfa.challengeAndVerify({ factorId: fid, code: code() }); if (r.error) throw r.error; say('#mfm', '2-step login is on.', true); done(); } catch (x) { say('#mfm', friendly(x)); busy(b, false); }
+    };
   }
 
   function showPwGate(d, view) {

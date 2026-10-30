@@ -81,7 +81,7 @@
         '<li><b>Leaving.</b> You can pause or leave at any time. We may pause a profile that breaks these rules.</li></ol><p class="mute">This is a plain-language summary of our pilot terms. Version ' + esc(AGREEMENT_VERSION) + '.</p></div>' +
         '<label class="ck"><input type="checkbox" id="agk"> I have read and accept the pilot agreement.</label><div class="dx-row" style="margin-top:14px"><button class="btn" id="agb" type="button">Accept and continue</button><button class="btn out" type="button" data-x>Not now</button><span class="amsg" id="agm" role="status" aria-live="polite"></span></div>', { wide: true });
       $('#agb', d).onclick = async () => { if (!$('#agk', d).checked) return say($('#agm', d), 'Please tick the box to accept.'); const b = $('#agb', d); busy(b, true, 'Saving…');
-        try { await run(sb.rpc('fn_accept_pilot_agreement', { p_version: AGREEMENT_VERSION })); const r = await run(sb.from('pilots').select('status,contract_version,contract_accepted_at').eq('id', uid).maybeSingle()); if (r) Object.assign(P, r); d.close2(true); U.toast('Agreement accepted', true); ctx.reload('pilot'); } catch (e) { busy(b, false); say($('#agm', d), fx(e)); } };
+        try { await run(sb.rpc('fn_accept_pilot_agreement', { p_version: AGREEMENT_VERSION })); const r = (await U.pilotRows(sb, uid))[0]; if (r) Object.assign(P, r); d.close2(true); U.toast('Agreement accepted', true); ctx.reload('pilot'); } catch (e) { busy(b, false); say($('#agm', d), fx(e)); } };
     }
 
     // ---------------------------------------------------------------- overview
