@@ -16,3 +16,4 @@ CONFIG.legal = CONFIG.legal || {};
 CONFIG.legal.updated = '28 October 2026';
 CONFIG.legacyForms = false;
 CONFIG.whatsappRedirect = true;
+CONFIG.googleSignIn = true;
