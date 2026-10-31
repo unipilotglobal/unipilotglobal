@@ -652,3 +652,19 @@ dialog.m2.bk{width:min(620px,96vw)}dialog.m2.bk.sm{width:min(480px,96vw)}
 /* bot check (Cloudflare Turnstile): the box is empty and invisible unless a visitor has to prove something */
 .cf-box{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:2147483000;max-width:calc(100vw - 24px)}
 .cf-box:empty{display:none}
+
+/* ---- pilots page polish (photos fill their frames, no repeated lines, loading placeholders, no overlap on phones) ---- */
+.pav,.mph,.pm2p,.bk-av{position:relative}
+.pav img,.mph img,.pm2p img,.bk-av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 22%}
+.mc.sk{cursor:default;pointer-events:none}.mc.sk:hover{transform:none;box-shadow:none;border-color:var(--line)}
+.mc.sk .mph{background:#e9eef6}.mc.sk .mph::after{display:none}
+.mc.sk .mb i{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,#e9eef6 25%,#f6f8fc 37%,#e9eef6 63%);background-size:400% 100%;animation:skm 1.3s ease infinite}
+@keyframes skm{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media(prefers-reduced-motion:reduce){.mc.sk .mb i{animation:none}}
+@media(max-width:820px){
+  .mc{grid-template-columns:106px 1fr}
+  .phead p{-webkit-line-clamp:unset;display:block;overflow:visible}.phead{padding:26px 0 36px}
+  .pg-pilots .asst{display:none}.pg-pilots main{padding-bottom:12px}
+  .phead+.sec{padding-top:30px}
+}
+@media(max-width:700px){.cmsg{white-space:normal;text-align:center;line-height:1.35;overflow:visible}.cbar .w{min-height:0}}
