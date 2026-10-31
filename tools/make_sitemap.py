@@ -8,7 +8,7 @@ Then upload the new sitemap.xml with GitHub Desktop like any other file.
 
 It lists: the main pages, every opportunity that is not marked Hidden, and every mentor in the Experts sheet that is not Draft or Hidden.
 """
-import re, sys, datetime
+import re, sys, os, json, datetime
 from urllib.parse import quote
 from xml.sax.saxutils import escape
 
@@ -37,8 +37,17 @@ def rows(wb, name):
     return [dict(zip(head, r)) for r in it if r and any(c not in (None, '') for c in r)]
 
 
+def static_ids(out):               # opportunities that have a ready-made page in /o/ (written by tools/prerender.js)
+    f = os.path.join(os.path.dirname(os.path.abspath(out)), 'data', 'static-ids.js')
+    try:
+        return set(json.loads(re.search(r'UP_STATIC\s*=\s*(\[.*?\])', open(f, encoding='utf-8').read(), re.S).group(1)))
+    except Exception:
+        return set()
+
+
 def main(src='content.xlsx', out='sitemap.xml'):
     today = datetime.date.today().isoformat()
+    ready = static_ids(out)
     urls = [(SITE + '/' + p, today, pr) for p, pr in PAGES]
     seen = set()
     if src:
@@ -52,7 +61,8 @@ def main(src='content.xlsx', out='sitemap.xml'):
                 continue
             seen.add(oid)
             v = str(r.get('Verified on') or '')[:10]
-            urls.append((SITE + '/opportunity.html?id=' + quote(oid, safe='-_.~'), v if re.match(r'^\d{4}-\d{2}-\d{2}$', v) else today, 0.6))
+            page = ('/o/' + quote(oid, safe='-_.~') + '.html') if oid in ready else ('/opportunity.html?id=' + quote(oid, safe='-_.~'))
+            urls.append((SITE + page, v if re.match(r'^\d{4}-\d{2}-\d{2}$', v) else today, 0.6))
         for r in rows(wb, 'Experts'):
             name = str(r.get('Name') or '').strip()
             if not name or re.match(r'^(draft|hidden)$', str(r.get('Status') or '').strip(), re.I):

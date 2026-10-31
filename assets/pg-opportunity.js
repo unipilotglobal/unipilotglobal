@@ -1,9 +1,9 @@
 UP.boot('find', U => {
-  const { C, $, esc, D, LV, RCOL } = U, id = new URLSearchParams(location.search).get('id'), o = D.opps.find(x => x.id === id), root = $('#root');
+  const { C, $, esc, D, LV, RCOL } = U, mt = document.querySelector('meta[name="up-opp"]'), id = (mt && mt.content) || new URLSearchParams(location.search).get('id'), o = D.opps.find(x => x.id === id), root = $('#root');
   if (!o) { root.innerHTML = '<h1>Opportunity not found</h1><p class="mute">This link may be out of date.</p><a class="btn" href="scholarships.html">Browse all</a>'; return; }
   document.title = o.name + ' | ' + C.brand;
   try {                                                  // search engines and share buttons: this page's own address, title and a short description
-    const url = 'https://unipilotglobal.com/opportunity.html?id=' + encodeURIComponent(o.id), dsc = String(o.desc || o.award || '').replace(/\s+/g, ' ').trim().slice(0, 155);
+    const url = 'https://unipilotglobal.com/' + U.oppUrl(o.id), dsc = String(o.desc || o.award || '').replace(/\s+/g, ' ').trim().slice(0, 155);
     const tag = (sel, name, key, val) => { let el = document.head.querySelector(sel); if (!el) { el = document.createElement(name); el.setAttribute(key, val); document.head.appendChild(el); } return el; };
     tag('link[rel=canonical]', 'link', 'rel', 'canonical').href = url;
     tag('meta[property="og:url"]', 'meta', 'property', 'og:url').content = url; tag('meta[property="og:title"]', 'meta', 'property', 'og:title').content = document.title;
@@ -13,6 +13,14 @@ UP.boot('find', U => {
   const where = o.countries.length ? o.countries.join(', ') : 'Multiple countries', sub1 = o.subjects.find(s => s !== 'All fields') || '', subj = o.subjects.length === 1 && o.subjects[0] === 'All fields' ? 'No field restriction listed' : o.subjects.filter(x => x !== 'All fields').join(', ');
   const link = o.link || 'https://www.google.com/search?q=' + encodeURIComponent(o.name + ' official application'), rel = D.opps.filter(x => x.id !== o.id && x.regions.some(r => o.regions.includes(r)) && x.type === o.type).slice(0, 3);
   const tips = o.tips.map(x => [x, 1]).concat(U.tipsFor(o).map(x => [x, 0])).slice(0, 8), vq = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(o.name + ' how to apply');
+  const T = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t; };
+  const faq = [['Who can apply for ' + o.name + '?', T(o.elig)], ['What does ' + o.name + ' cover?', T(o.award)], ['When is the deadline for ' + o.name + '?', o.deadline ? T(o.deadline) + ' Dates change every year, so confirm on the official page.' : ''],
+    ['Where can I study or work with ' + o.name + '?', o.countries.length ? 'Host countries: ' + o.countries.join(', ') + '.' : ''], ['What documents do I need for ' + o.name + '?', o.docs.length ? o.docs.map(T).join('; ') + '.' : ''],
+    ['How are applicants selected for ' + o.name + '?', T(o.scoring)], ['How much work is the ' + o.name + ' application?', o.effort ? T(o.effort) : '']].filter(x => x[1]);
+  const faqHtml = faq.length ? `<div class="panel" data-faq><h2>Quick answers</h2>${faq.map(x => `<h3 data-q style="font-size:1.02rem;margin:16px 0 4px">${esc(x[0])}</h3><p data-a style="margin:0">${esc(x[1])}</p>`).join('')}</div>` : '';
+  const steps = [['Check that you are eligible', T(o.elig) || 'Read the eligibility rules on the official page.'], ['Note the deadline', o.deadline ? T(o.deadline) + ' Confirm the exact date on the official page.' : 'Find the exact deadline on the official page.'],
+    ['Prepare your documents', o.docs.length ? o.docs.map(T).join('; ') + '.' : 'Collect the documents listed on the official page.'], ['Apply on the official page', o.link ? 'Open the official application page and submit your application before the deadline.' : 'Search for the official application page and submit your application before the deadline.']];
+  const howHtml = `<div class="panel" data-howto><h2>How to apply, step by step</h2><ol class="stp" style="margin:0;padding-left:22px">${steps.map(x => `<li data-s style="margin:0 0 10px"><b data-sn>${esc(x[0])}.</b> <span data-st>${esc(x[1])}</span></li>`).join('')}</ol></div>`;
   const video = vid ? U.video(vid, 'How to apply: ' + o.name) + `<p class="nav-note" style="margin:10px 0 0">${o.video ? 'Free video guide for this opportunity.' : 'Our free general guide to scholarship applications.'}</p>`
     : `<div class="vph"><h3>Video guide coming soon</h3><p>We are preparing a step-by-step video for this ${o.type.toLowerCase()}. Meanwhile, find application tutorials on YouTube or ask us to make this one next.</p><div class="acts"><a class="btn" href="${vq}" target="_blank" rel="noopener">Search YouTube guides</a>${C.youtubeChannel ? `<a class="btn out" href="${esc(C.youtubeChannel)}" target="_blank" rel="noopener">Our channel</a>` : ''}${w2 ? `<a class="btn out" href="${w2}" target="_blank" rel="noopener">Request this video</a>` : ''}</div></div>`;
   root.innerHTML = `<p><a href="scholarships.html">&larr; Back to finder</a></p><div class="det"><div>
@@ -24,10 +32,12 @@ UP.boot('find', U => {
   <div class="panel"><h2>Watch: how to apply</h2>${video}</div>
   ${o.desc ? `<div class="panel"><h2>About this opportunity</h2><p style="margin:0">${esc(o.desc)}</p></div>` : ''}
   ${o.docs.length ? `<div class="panel chk"><h2>Documents to prepare</h2><div class="prog" id="chkp"></div>${o.docs.map(d => `<label><input type="checkbox">${esc(d)}</label>`).join('')}</div>` : `<div class="panel"><h2>Documents to prepare</h2><p style="margin:0">Requirements differ by year and university. Our guideline gives you a full checklist for this opportunity.</p></div>`}
+  ${howHtml}
   ${o.scoring ? `<div class="panel"><h2>How applicants are selected</h2><p style="margin:0">${esc(o.scoring)}</p></div>` : ''}${o.past ? `<div class="panel"><h2>Profile of past winners</h2><p style="margin:0">${esc(o.past)}</p></div>` : ''}
   ${(() => { const m = U.matFor(o).slice(0, 6); return `<div class="panel"><h2>Free materials</h2>${m.length ? `<div class="mgrid">${m.map(U.matCard).join('')}</div>` : '<p style="margin:0 0 6px">Templates, checklists and guides to help you apply.</p>'}<p style="margin:14px 0 0"><a href="materials.html"><b>Browse all free materials &rarr;</b></a></p></div>`; })()}
   ${(() => { const pl = U.pilotsFor(o).slice(0, 4); return pl.length ? `<div class="panel"><h2>Pilots who can guide you</h2><p class="mute" style="margin:-4px 0 14px">People who know this scholarship or studied in the host country.</p><div class="pgrid">${pl.map(U.pilotMini).join('')}</div><p style="margin:14px 0 0"><a href="pilots.html"><b>Meet all pilots &rarr;</b></a></p></div>` : ''; })()}
   <div class="panel"><h2>Tips from our advisors</h2><ol class="tips">${tips.map(t => `<li class="${t[1] ? 'x' : ''}">${esc(t[0])}</li>`).join('')}</ol></div>
+  ${faqHtml}
   <p><a class="btn" href="${esc(link)}" target="_blank" rel="noopener">${o.link ? 'Go to the official application page' : 'Find the official page'}</a></p>
   ${rel.length ? `<h2 style="margin-top:44px">More in ${esc(o.region)}</h2><div class="grid">${rel.map(U.card).join('')}</div>` : ''}</div>
   <aside class="side"><div class="box" style="border:2px solid var(--gold);margin-bottom:16px"><h3>Ask an experienced advisor about this ${o.type.toLowerCase()}</h3><p class="mute">Not sure you qualify, or how to start? Send your question. We reply by email or WhatsApp.</p><button class="btn blk" id="askb" type="button">Contact an expert</button></div><div class="box dark"><span class="eyebrow">Winning guideline</span><h3>Step-by-step guideline for this ${o.type.toLowerCase()}</h3><ul class="ul" style="font-size:.93rem">${C.guidelineIncludes.map(i => `<li>${esc(i)}</li>`).join('')}</ul>

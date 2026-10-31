@@ -31,7 +31,7 @@ function draw(rs) {
 function suggest() {
   const v = $('#q').value.trim().toLowerCase(), box = $('#sugg'); if (v.length < 2) { box.hidden = true; return; }
   const W = v.split(/\s+/), m = U0.D.opps.filter(o => W.every(w => (o.name + ' ' + o.sponsor + ' ' + o.countries.join(' ')).toLowerCase().includes(w))).slice(0, 6);
-  box.hidden = !m.length; box.innerHTML = m.map(o => `<a href="opportunity.html?id=${encodeURIComponent(o.id)}"><b>${UP.esc(o.name)}</b><span>${UP.esc(o.region)} · ${UP.esc(o.levels.map(l => UP.LV[l] || l).join('/'))}</span></a>`).join('');
+  box.hidden = !m.length; box.innerHTML = m.map(o => `<a href="${UP.oppUrl(o.id)}"><b>${UP.esc(o.name)}</b><span>${UP.esc(o.region)} · ${UP.esc(o.levels.map(l => UP.LV[l] || l).join('/'))}</span></a>`).join('');
 }
 function closePops() { $$('.pop').forEach(p => { p.hidden = true; }); $$('.fb[aria-expanded]').forEach(b => b.setAttribute('aria-expanded', 'false')); }
 UP.boot('find', U => {
