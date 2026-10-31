@@ -1,1 +1,29 @@
+# UNIPILOT GLOBAL: keeps sitemap.xml up to date by itself.
+# Every time content.xlsx changes on GitHub, this builds a new sitemap.xml from it (all opportunities and mentors).
+name: Update sitemap
+on:
+  push:
+    paths:
+      - 'content.xlsx'
+      - 'tools/make_sitemap.py'
+      - '.github/workflows/sitemap.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sitemap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openpyxl
+      - run: python tools/make_sitemap.py content.xlsx sitemap.xml
+      - name: Save the new sitemap if it changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add sitemap.xml
+          git diff --staged --quiet || (git commit -m "Update sitemap" && git push)
 
