@@ -39,7 +39,8 @@ function serve() {                                       // tiny local web serve
   fs.writeFileSync(path.join(ROOT, 'data', 'static-ids.js'), 'window.UP_STATIC=[];\n');
   const p0 = await ctx.newPage(); await p0.goto(base + '/scholarships.html');
   await p0.waitForFunction(() => window.UP && UP.D && UP.D.opps && UP.D.opps.length > 0, null, { timeout: 30000 }); await p0.waitForTimeout(2500);
-  const all = await p0.evaluate(() => UP.D.opps.map(o => ({ id: o.id, name: o.name })));
+  const all = await p0.evaluate(() => UP.D.opps.map(o => ({ id: o.id, name: o.name, sponsor: o.sponsor || '', type: o.type, region: o.region || 'Other', award: o.award || '', deadline: o.deadline || '', closed: !!o.closed })));
+  const shell = await p0.evaluate(() => ({ hdr: document.querySelector('#hdr').innerHTML, ftr: document.querySelector('#ftr').innerHTML }));
   await p0.close();
   const ids = all.map(o => o.id).filter(id => /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id));
   console.log('Opportunities found: ' + all.length + ' (ready-made pages: ' + ids.length + ')');
@@ -48,7 +49,7 @@ function serve() {                                       // tiny local web serve
   const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;   // ONLY=id1,id2 rebuilds just those pages
   if (!ONLY) fs.rmSync(OUT, { recursive: true, force: true }); fs.mkdirSync(OUT, { recursive: true });
 
-  let done = 0, bad = []; const todo = ONLY || ids;
+  let done = 0, bad = []; const todo = process.env.SKIPPAGES ? [] : (ONLY || ids);
   let ctxNow = ctx;
   async function one(id) {
     const pg = await ctxNow.newPage();
@@ -94,6 +95,27 @@ function serve() {                                       // tiny local web serve
   }
   await brNow.close(); srv.close();
   if (bad.length) { console.log('PROBLEMS (' + bad.length + '):\n' + bad.join('\n')); const okIds = ids.filter(i => fs.existsSync(path.join(OUT, i + '.html'))); fs.writeFileSync(path.join(ROOT, 'data', 'static-ids.js'), '// List of opportunities that have their own ready-made page in /o/ (written by tools/prerender.js).\nwindow.UP_STATIC=' + JSON.stringify(okIds) + ';\n'); }
+  // the plain list of everything (opportunities.html): the page that lets any crawler walk from one link to all opportunities
+  try {
+    const cut = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n).replace(/\s+\S*$/, '') + '...' : t; }, tp = { Scholarship: 'Scholarships', Internship: 'Internships' }, have = new Set(fs.readdirSync(OUT).map(f => f.replace(/\.html$/, '')));
+    const list = all.filter(o => have.has(o.id)).sort((a, b) => a.name.localeCompare(b.name)), regions = Array.from(new Set(list.map(o => o.region))).sort(), sec = [], jump = [], items = [];
+    ['Scholarship', 'Internship'].forEach(t => regions.forEach(r => {
+      const g = list.filter(o => o.type === t && o.region === r); if (!g.length) return; const hid = (t + '-' + r).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      jump.push('<a href="#' + hid + '">' + esc(tp[t]) + ' in ' + esc(r) + ' (' + g.length + ')</a>');
+      sec.push('<h2 id="' + hid + '" style="margin-top:34px">' + esc(tp[t]) + ' in ' + esc(r) + ' (' + g.length + ')</h2><ul style="padding-left:20px">' + g.map(o => '<li style="margin:0 0 12px"><a href="o/' + encodeURIComponent(o.id) + '.html"><b>' + esc(o.name) + '</b></a>' + (o.closed ? ' (closed)' : '') + (o.sponsor ? ' - ' + esc(cut(o.sponsor, 90)) : '') + '.' + (o.award ? ' Covers: ' + esc(cut(o.award, 150)) + '.' : '') + (o.deadline ? ' Deadline: ' + esc(cut(o.deadline, 90)) + '.' : '') + '</li>').join('') + '</ul>');
+    }));
+    list.forEach((o, i) => items.push({ '@type': 'ListItem', position: i + 1, url: SITE + '/o/' + encodeURIComponent(o.id) + '.html', name: o.name }));
+    const url = SITE + '/opportunities.html', ttl = 'All scholarships and internships (simple list) | UNIPILOT GLOBAL', dsc = 'A plain list of all ' + list.length + ' scholarships and internships on UNIPILOT GLOBAL, grouped by type and region, with what each covers and its deadline.';
+    let h = template.replace('<meta charset="utf-8">', '<meta charset="utf-8">').replace(/<title>[\s\S]*?<\/title>/, '<title>' + esc(ttl) + '</title>');
+    const setMeta = (re, val) => { if (re.test(h)) h = h.replace(re, m => m.replace(/content="[^"]*"/, 'content="' + esc(val) + '"')); };
+    setMeta(/<meta name="description"[^>]*>/, dsc); setMeta(/<meta property="og:title"[^>]*>/, ttl); setMeta(/<meta property="og:description"[^>]*>/, dsc); setMeta(/<meta property="og:url"[^>]*>/, url);
+    h = h.replace(/<link rel="canonical" href="[^"]*">/, '<link rel="canonical" href="' + url + '">');
+    h = h.replace('</head>', '<script type="application/ld+json">' + ldJson({ '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', '@id': url + '#page', url, name: ttl, description: dsc, inLanguage: 'en', isPartOf: { '@id': SITE + '/#site' }, mainEntity: { '@type': 'ItemList', numberOfItems: list.length, itemListElement: items } }, { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Home', item: SITE + '/' }, { '@type': 'ListItem', position: 2, name: 'All opportunities', item: url }] }] }) + '</script></head>');
+    h = h.replace('assets/pg-opportunity.js', 'assets/pg-all.js');
+    const body = '<h1 style="font-size:clamp(1.9rem,3.6vw,2.7rem)">All scholarships and internships</h1><p class="mute">' + list.length + ' opportunities in a plain list. Click a name for eligibility, deadline, documents and how to apply. Want to filter by country, level or subject? <a href="scholarships.html">Use the finder</a>.</p><p style="line-height:2">' + jump.join(' &middot; ') + '</p>' + sec.join('');
+    h = h.replace('<div id="hdr"></div>', '<div id="hdr">' + shell.hdr + '</div>').replace(/<div class="w sec" id="root"([^>]*)><\/div>/, '<div class="w sec" id="root"$1>' + body + '</div>').replace('<div id="ftr"></div>', '<div id="ftr">' + shell.ftr + '</div>');
+    fs.writeFileSync(path.join(ROOT, 'opportunities.html'), h); console.log('opportunities.html: ' + list.length + ' links');
+  } catch (e) { console.log('opportunities.html FAILED: ' + e.message); }
   const r = spawnSync('python3', [path.join(ROOT, 'tools', 'make_sitemap.py'), XLSX, path.join(ROOT, 'sitemap.xml')], { stdio: 'inherit' });
   console.log('Done. Pages written: ' + fs.readdirSync(OUT).length);
 })();

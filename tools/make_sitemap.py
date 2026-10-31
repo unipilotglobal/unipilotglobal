@@ -18,7 +18,7 @@ except ImportError:
     sys.exit('Please run:  pip install openpyxl')
 
 SITE = 'https://unipilotglobal.com'
-PAGES = [('', 1.0), ('scholarships.html', 0.9), ('pilots.html', 0.8), ('services.html', 0.7), ('materials.html', 0.7),
+PAGES = [('', 1.0), ('scholarships.html', 0.9), ('opportunities.html', 0.9), ('pilots.html', 0.8), ('services.html', 0.7), ('materials.html', 0.7),
          ('seminars.html', 0.6), ('news.html', 0.6), ('reviews.html', 0.5), ('contact.html', 0.5), ('legal.html', 0.3)]
 
 
