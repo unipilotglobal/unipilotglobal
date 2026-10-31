@@ -327,7 +327,6 @@
       if (!r.ok) r = await go('id,timezone,' + base);          // the full-profile database update is not installed yet
       if (!r.ok) r = await go(base);          // the database update for booking is not installed yet: still show the pilots
       clearTimeout(t); if (!r.ok) return []; const j = await r.json();
-      if (Array.isArray(j)) { try { localStorage.setItem('up_dbp', JSON.stringify({ t: Date.now(), r: j })); } catch (e) { } }   // remembered, so the next visit shows the pilots at once
       return Array.isArray(j) ? j.map(dbMap).filter(Boolean) : [];
     } catch (e) { return []; }
   }
@@ -337,8 +336,6 @@
     let raw = null; try { raw = localStorage.getItem(KEY); } catch (e) { }
     const run = p => { UP.D = build(p); applySettings(UP.D.settings); shell(active); render(UP); reveal(); };
     let first = null; try { first = raw ? JSON.parse(raw) : null; } catch (e) { }
-    UP.settled = false;      // false until the first real answer (Excel + pilots) is in, so pages can show a loading state instead of "nothing here"
-    try { const c = UP.accShown() ? JSON.parse(localStorage.getItem('up_dbp') || 'null') : null; if (c && Array.isArray(c.r) && Date.now() - c.t < 14 * 864e5) { dbPilots = c.r.map(dbMap).filter(Boolean); dbSig = JSON.stringify(dbPilots); } } catch (e) { }      // pilots seen on the last visit appear instantly
     const dbp = loadDbPilots(), live = UP.loadLive(), liveWas = JSON.stringify(UP.live);
     run(first);
     let src = null;
@@ -346,7 +343,6 @@
     if (!src && C.contentFile) { try { const r = await fetch(C.contentFile, { cache: 'no-cache' }); if (!r.ok) throw new Error('HTTP ' + r.status); src = await readXlsx(await r.arrayBuffer()); } catch (e) { console.warn('Content file not loaded; using saved or built-in data.', e); } }
     if (src && src.opportunities.length) { const s = JSON.stringify(src); if (s !== raw) { try { localStorage.setItem(KEY, s); } catch (e) { } run(src); } if (UP.D.dupes.length) console.warn('Same-name rows were merged into one card:', UP.D.dupes); }
     try { const pl = await dbp, sig = JSON.stringify(pl); if (sig !== dbSig && (pl.length || dbSig)) { dbSig = sig; dbPilots = pl; run(src || first); } } catch (e) { }
-    UP.settled = true; try { document.dispatchEvent(new Event('up-settled')); } catch (e) { }
     try { const lv = await live; if (lv && JSON.stringify(lv) !== liveWas) run(src || first); } catch (e) { }
     if (C.scriptUrl) { try { const r = await fetch(C.scriptUrl + (C.scriptUrl.includes('?') ? '&' : '?') + 'action=count'), j = await r.json(); if (+j.count >= 0 && +j.count !== UP.count) { UP.count = +j.count; shell(active); render(UP); reveal(); } } catch (e) { } }
   }
@@ -530,8 +526,7 @@
     // Strict: a pilot appears only if they know THIS scholarship or studied in its host country. No fallback.
     return UP.D.experts.map(e => { const t = e.tags.find(known), c = e.studied.find(x => cs.includes(cc(x))); return { e, sc: (t ? 3 : 0) + (c ? 2 : 0) + (e.feat ? .5 : 0), why: t ? 'Knows ' + t : c ? 'Studied in ' + c : '' }; }).filter(x => x.why).sort((a, b) => b.sc - a.sc); };
   UP.pilotMini = x => `<a class="pm2" href="pilots.html?pilot=${esc(x.e.id)}"><span class="pm2p">${UP.photoHTML(x.e)}</span><span class="pm2t"><b>${esc(x.e.name)}</b><span>${esc(x.e.role)}</span>${x.e.studied.length ? `<span class="pm2f">${x.e.studied.slice(0, 4).map(UP.flag).join('')}</span>` : ''}${x.why ? `<small>${esc(x.why)}</small>` : ''}</span></a>`;
-  UP.tag2 = e => { const n = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); return !!e.tagline && n(e.tagline) !== n(e.role); };      // a tagline that repeats the role line is not shown twice
-  UP.mentorCard = e => `<article class="mc" tabindex="0" data-m="${esc(e.id)}"><div class="mph">${UP.photoHTML(e)}${e.studied.length ? `<div class="mflags">${e.studied.slice(0, 5).map(UP.flag).join('')}</div>` : ''}</div><div class="mb"><h3>${esc(e.name)}</h3><p class="mr">${esc(e.role)}</p>${UP.tag2(e) ? `<p class="mt2">${esc(e.tagline)}</p>` : ''}<p class="mtags">${e.field ? `<span class="pill">${esc(e.field)}</span>` : ''}${e.tags.slice(0, 2).map(t => `<span class="pill g">${esc(t)}</span>`).join('')}</p>${e.helps.length ? `<p class="mh">${e.helps.slice(0, 3).map(h => `<span>${esc(h)}</span>`).join('')}</p>` : ''}<div class="mact"><button type="button" class="btn sm out" data-m="${esc(e.id)}">View profile</button><button type="button" class="btn sm" data-b="${esc(e.id)}">Book</button></div></div></article>`;
+  UP.mentorCard = e => `<article class="mc" tabindex="0" data-m="${esc(e.id)}"><div class="mph">${UP.photoHTML(e)}${e.studied.length ? `<div class="mflags">${e.studied.slice(0, 5).map(UP.flag).join('')}</div>` : ''}</div><div class="mb"><h3>${esc(e.name)}</h3><p class="mr">${esc(e.role)}</p>${e.tagline ? `<p class="mt2">${esc(e.tagline)}</p>` : ''}<p class="mtags">${e.field ? `<span class="pill">${esc(e.field)}</span>` : ''}${e.tags.slice(0, 2).map(t => `<span class="pill g">${esc(t)}</span>`).join('')}</p>${e.helps.length ? `<p class="mh">${e.helps.slice(0, 3).map(h => `<span>${esc(h)}</span>`).join('')}</p>` : ''}<div class="mact"><button type="button" class="btn sm out" data-m="${esc(e.id)}">View profile</button><button type="button" class="btn sm" data-b="${esc(e.id)}">Book</button></div></div></article>`;
   UP.ask = o => {
     let d = document.getElementById('askd'); if (!d) { d = document.createElement('dialog'); d.id = 'askd'; d.className = 'dlg'; document.body.appendChild(d); }
     d.innerHTML = `<button class="dx" type="button" aria-label="Close">&times;</button><h3>Ask an experienced advisor</h3><p class="mute">About: <b>${esc(o.name)}</b>. Tell us what you want to know. We reply by email or WhatsApp.</p><div id="askm"></div>
