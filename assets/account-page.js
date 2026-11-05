@@ -111,7 +111,7 @@
   async function loadPilotRow(uid) {
     const B = 'id,slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url,timezone,status,rating_avg,rating_count,created_at,updated_at', T = 'commission_bps,contract_version,contract_accepted_at';
     const get = (cols, from) => sb.from(from).select(cols).eq('id', uid).maybeSingle();
-    let r = await get(B + ',education,highlights,based_in,tagline,results,best_for,top_tip,intro_video,verified_at', 'pilots'); if (r.error) r = await get(B + ',education,highlights,based_in,tagline', 'pilots'); if (r.error) r = await get(B, 'pilots');
+    let r = await get(B + ',education,highlights,based_in,tagline,results,best_for,top_tip,intro_video,verified_at,notice_hours,buffer_min,horizon_days', 'pilots'); if (r.error) r = await get(B + ',education,highlights,based_in,tagline,results,best_for,top_tip,intro_video,verified_at', 'pilots'); if (r.error) r = await get(B + ',education,highlights,based_in,tagline', 'pilots'); if (r.error) r = await get(B, 'pilots');
     if (r.error || !r.data) return r;
     let t = await get(T, 'v_pilot_terms'); if (t.error) t = await get(T, 'pilots');
     if (!t.error && t.data) Object.assign(r.data, t.data);
