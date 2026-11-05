@@ -1,0 +1,38 @@
+# UNIPILOT GLOBAL: every day (and whenever you press "Run workflow") this reads your public pilot list from the database and
+# rebuilds the ready-made pilot pages (folder pilot/), the plain pilot list inside pilots.html, and sitemap.xml.
+# New pilots therefore appear for Google and ChatGPT by themselves. Needs tools/build_pilots.js and tools/make_sitemap.py.
+name: Build pilot pages
+on:
+  push:
+    paths:
+      - 'tools/build_pilots.js'
+      - 'assets/**'
+      - 'pilots.html'
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: site-pages
+  cancel-in-progress: false
+jobs:
+  pilots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install openpyxl
+      - run: node tools/build_pilots.js
+      - run: python3 tools/stamp.py
+      - name: Save the new pages if they changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add pilot pilots.html '*.html' o data/pilots-static.json sitemap.xml
+          git diff --staged --quiet || (git commit -m "Update pilot pages" && git pull --rebase && git push)
