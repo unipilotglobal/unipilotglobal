@@ -1,29 +1,16 @@
-UPDATE 5 Nov: pilots (phone + flags + readable by ChatGPT/Google), seminars merged into Materials
-=====================================================================================
-WHAT IS NEW
-1. Pilot profile opens on phones again, flags are back (this includes the earlier hotfix).
-2. Pilots page: a short "How a session works" strip, and "How a session works" inside each profile.
-3. Every pilot gets a plain page (pilot/<name>.html) that ChatGPT and Google can read, with a pilot list in pilots.html.
-   These pages are made by a small automatic job (step B below). Until it runs once, the Pilots page works as before.
-4. "Seminars" no longer says "Free". The seminars page is merged into the Materials page,
-   which is now called "Materials & Seminars". The old address seminars.html still works (it forwards).
-5. The two "simple list" links (above the footer and inside it) are removed. The plain list page still exists for Google.
-6. Home page: the seminar block sits in the middle of the page and shows ONLY when a seminar is announced
-   (or a recording exists). Nothing is shown when there is none.
+UPDATE 3 - tidy pilot cards and profile + dropdowns for pilots (only 4 files)
+===============================================================================
+1. Copy the folder "assets" from this zip into your website folder (Replace the files; do not delete your old assets folder).
+2. GitHub Desktop: commit "pilot profile tidy", Push origin.
+3. Wait 2 minutes. The automatic job "Build pilot pages" runs by itself after this push and refreshes the version numbers.
+   (GitHub > Actions: a green tick.) Then in GitHub Desktop: Fetch origin > Pull origin, BEFORE you upload anything else.
+4. Cloudflare > Caching > Purge Everything.
 
-STEP A - upload (about 5 minutes)
- 1. Open your website folder (GitHub Desktop > Repository > Show in Explorer).
- 2. Copy everything from this zip into it, YES to replace. Do NOT touch config.js / accounts.js (not in the zip).
- 3. In the folder assets, delete the file pg-seminars.js (no longer used).
- 4. GitHub Desktop: commit "pilots and seminars update", Push origin.
- 5. Cloudflare > Caching > Purge Everything.
-    (Once: Caching > Configuration > Browser Cache TTL > "Respect Existing Headers".)
-
-STEP B - make pilots readable by ChatGPT/Google (one time, 3 minutes)
- 1. Copy the folder AUTOMATIC-JOB-optional/.github/workflows/pilots.yml into your repository folder .github/workflows/
-    (same place where pages.yml is). Commit and Push.
- 2. On github.com open your repository > Actions > "Build pilot pages" > Run workflow.
- 3. After it finishes (green tick): GitHub Desktop > Fetch origin > Pull origin.
- 4. Open unipilotglobal.com/pilots.html > View page source: you will see the pilot names.
-    It then repeats every night by itself, so new pilots appear without you doing anything.
- If you see a red cross, send me a screenshot.
+WHAT CHANGES
+- Pilot cards: long text is shortened with "..." so all cards stay the same size.
+- Pilot profile on phones: much more compact; long "About" text has a "Read more" button.
+- When a pilot fills in the profile: choose from a list or pick "Other (type your own)":
+  main field, countries, scholarships, languages (helps-with topics already had buttons).
+- Shorter limits so profiles stay clear: headline 90 characters, tagline 110, About 900,
+  max 6 education lines and 6 highlights (120 characters each), max 8 scholarships/countries/topics.
+  A pilot's existing text is NOT cut: it only has to be shortened if they edit that part.
