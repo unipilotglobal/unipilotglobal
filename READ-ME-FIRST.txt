@@ -1,0 +1,8 @@
+HOTFIX 5 Nov - pilots page on phone + flags
+1. Open your website folder (GitHub Desktop > Repository > Show in Explorer).
+2. Copy everything from this zip into it, say YES to replace.
+   (Do NOT replace config.js or accounts.js - they are not in this zip.)
+3. GitHub Desktop: write "hotfix pilots phone" > Commit > Push origin.
+4. Cloudflare > Caching > Purge Everything.
+5. Cloudflare > Caching > Configuration > Browser Cache TTL > "Respect Existing Headers".
+6. On the phone, open the pilots page. Flags are back on the photos, profile opens.

@@ -115,7 +115,8 @@
     dbPilots.forEach(e => { if (!taken.has(e.id)) { taken.add(e.id); experts.push(e); } });
     return { opps, materials: mats, topics, seminars: sem, news, videos: vids, reviews, experts, visa, settings: p.settings || {}, guides: BASE.regionGuides || {}, dupes };
   }
-  const UP = { C, $, $$, esc, LV, REGIONS, RCOL, RDESC, SUBJECTS, COUNTRIES, fmtDate, ytId, soon, img, A, count: 0, D: build(null) };
+  let V = ''; try { const m = /[?&]v=([0-9a-f]+)/.exec((document.currentScript || {}).src || ''); V = m ? '?v=' + m[1] : ''; } catch (e) { }      // build stamp: files loaded later get the same stamp, so an old copy is never mixed with new ones
+  const UP = { V, C, $, $$, esc, LV, REGIONS, RCOL, RDESC, SUBJECTS, COUNTRIES, fmtDate, ytId, soon, img, A, count: 0, D: build(null) };
 
   function applySettings(s) {
     const m = { students_base: 'studentsBase', seminars_held: 'seminarsHeld', years_experience: 'yearsExperience', whatsapp: 'whatsapp', youtube_channel: 'youtubeChannel', default_video: 'defaultVideo', facebook: 'facebook', linkedin: 'linkedin' };
@@ -130,7 +131,7 @@
   UP.accShown = () => !!(C.supabaseUrl && C.supabaseKey && C.accountsLaunch !== false);
   UP.accLinks = () => !!(C.supabaseUrl && C.supabaseKey) && (C.accountsLaunch !== false || document.body.dataset.page === 'account');   // links also show on the account page itself, even in private mode
   UP.sessUser = () => { try { const j = JSON.parse(localStorage.getItem('sb-' + accRef + '-auth-token') || 'null'); return (j && j.user) || null; } catch (e) { return null; } };
-  UP.loadAcc = () => UP.acc ? Promise.resolve(UP.acc) : (UP.accP = UP.accP || new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/account.js'; sc.onload = () => res(UP.acc); sc.onerror = () => { UP.accP = null; rej(new Error('Sign-in code could not load')); }; document.head.appendChild(sc); }));
+  UP.loadAcc = () => UP.acc ? Promise.resolve(UP.acc) : (UP.accP = UP.accP || new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/account.js' + V; sc.onload = () => res(UP.acc); sc.onerror = () => { UP.accP = null; rej(new Error('Sign-in code could not load')); }; document.head.appendChild(sc); }));
   const UICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>';
   // the booking calendar is a separate file, loaded only when someone opens a booking
   // ---- prices in taka: a small "≈ ৳6,575" next to every price in another currency. Rates are public market rates saved by the server once an hour (the source updates daily).
@@ -155,7 +156,7 @@
     const html = (cents, cur) => { const n = bdt(cents, cur); return n ? '<span class="fx" title="About ' + esc(fmt(n)) + ' at today\'s rate (1 ' + esc(String(cur).toUpperCase()) + ' = ৳' + esc(rate(cur).toFixed(2)) + '). The exact amount is shown when you pay.">≈ ' + esc(fmt(n)) + '</span>' : ''; };
     return { ready, rate, bdt, text, html, fmt };
   })();
-  UP.loadBook = () => UP.book && UP.book.open ? Promise.resolve(UP.book) : (UP.bookP = UP.bookP || UP.loadAcc().then(() => new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/booking.js'; sc.onload = () => res(UP.book); sc.onerror = () => { UP.bookP = null; rej(new Error('Booking code could not load')); }; document.head.appendChild(sc); })));
+  UP.loadBook = () => UP.book && UP.book.open ? Promise.resolve(UP.book) : (UP.bookP = UP.bookP || UP.loadAcc().then(() => new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'assets/booking.js' + V; sc.onload = () => res(UP.book); sc.onerror = () => { UP.bookP = null; rej(new Error('Booking code could not load')); }; document.head.appendChild(sc); })));
   UP.bookOpen = o => UP.loadBook().then(b => b.open(o));
   UP.signHTML = () => { const u = UP.sessUser(); if (!UP.accLinks()) return ''; const nm = u && ((u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || u.email) || '', ini = String(nm).trim().slice(0, 1).toUpperCase() || '&#9679;';
     return u ? `<a id="hsign" class="hsign in" href="account.html" aria-label="My account"><span class="hav">${esc(ini)}</span><span class="hst">My account</span></a>` : `<a id="hsign" class="hsign" href="account.html" aria-label="Sign in">${UICON}<span class="hst">Sign in</span></a>`; };

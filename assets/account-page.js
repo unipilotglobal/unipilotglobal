@@ -245,9 +245,9 @@
   const loaded = {};
   const loadJs = src => loaded[src] || (loaded[src] = new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = () => { delete loaded[src]; rej(new Error('Could not load ' + src)); }; document.head.appendChild(el); }));
   async function loadMods(view, staff, pilot) {
-    await loadJs('assets/dash-ui.js'); await loadJs('assets/dash-student.js');
-    if (view === 'pilot' || staff) await loadJs('assets/dash-pilot.js');
-    if (view === 'admin') await loadJs('assets/dash-admin.js');
+    await loadJs('assets/dash-ui.js' + (UP.V || '')); await loadJs('assets/dash-student.js' + (UP.V || ''));
+    if (view === 'pilot' || staff) await loadJs('assets/dash-pilot.js' + (UP.V || ''));
+    if (view === 'admin') await loadJs('assets/dash-admin.js' + (UP.V || ''));
   }
   const tzList = () => { try { if (Intl.supportedValuesOf) return Intl.supportedValuesOf('timeZone'); } catch (e) { } return ['UTC', 'Europe/Warsaw', 'Europe/Berlin', 'Europe/London', 'Asia/Dhaka', 'Asia/Kolkata', 'Asia/Dubai', 'America/New_York', 'America/Los_Angeles', 'Australia/Sydney']; };
   const myTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } };
