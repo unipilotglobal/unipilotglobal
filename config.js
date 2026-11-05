@@ -10,9 +10,7 @@ window.CONFIG = {
   facebook: 'https://www.facebook.com/profile.php?id=61580476092952',
   linkedin: 'https://www.linkedin.com/company/unipilot-global/',
   // LEGAL PAGE: fill these in when your business registration is ready. Empty values show an honest 'will be published' note.
-  legal: { legalName: 'UNIPILOT GLOBAL', businessType: 'Online education consultancy and information service', owner: '', registration: '', address: '', phone: '', governingLaw: '', cancelHours: 24, refundDays: 10, updated: '19 October 2026' },
-
-  // Your content lives in this Excel file inside the site (data folder). Edit it, upload it to GitHub, done.
+ legal: { legalName: 'UNIPILOT GLOBAL', businessType: 'Online education consultancy and information service', owner: 'Md Abdur Rohim', registration: 'Trade licence No. 536, valid until 30 June 2027', address: 'Holding-140, Sonadiya, Hatiya, Noakhali', phone: '', governingLaw: 'Bangladesh', cancelHours: 24, refundDays: 10, updated: '5 November 2026' },
   // LIVE EDITING: paste your Google Sheet ID here (the long text between /d/ and /edit in the sheet address). Empty = use the Excel file below.
   sheetId: '',
   contentFile: 'content.xlsx',
