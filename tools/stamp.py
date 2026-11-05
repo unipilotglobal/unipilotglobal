@@ -18,7 +18,7 @@ for n in names:
 v = h.hexdigest()[:8]
 pat = re.compile(r'((?:src|href)=")((?:/?assets/[A-Za-z0-9_.-]+\.(?:js|css)|/?config\.js|/?accounts\.js|/?data/base\.js|/?data/static-ids\.js))(\?v=[0-9a-f]+)?(")')
 n_files = 0
-for f in glob.glob('*.html') + glob.glob('o/*.html'):
+for f in glob.glob('*.html') + glob.glob('o/*.html') + glob.glob('pilot/*.html'):
     s = open(f, encoding='utf-8').read()
     t = pat.sub(lambda m: m.group(1) + m.group(2) + '?v=' + v + m.group(4), s)
     if t != s:

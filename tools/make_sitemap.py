@@ -19,7 +19,7 @@ except ImportError:
 
 SITE = 'https://unipilotglobal.com'
 PAGES = [('', 1.0), ('scholarships.html', 0.9), ('opportunities.html', 0.9), ('pilots.html', 0.8), ('services.html', 0.7), ('materials.html', 0.7),
-         ('seminars.html', 0.6), ('news.html', 0.6), ('reviews.html', 0.5), ('contact.html', 0.5), ('legal.html', 0.3)]
+         ('news.html', 0.6), ('reviews.html', 0.5), ('contact.html', 0.5), ('legal.html', 0.3)]
 
 
 def slug(s):                       # the same rule the website uses to build an address from a name
@@ -68,6 +68,11 @@ def main(src='content.xlsx', out='sitemap.xml'):
             if not name or re.match(r'^(draft|hidden)$', str(r.get('Status') or '').strip(), re.I):
                 continue
             urls.append((SITE + '/pilots.html?pilot=' + quote(slug(name), safe='-_.~'), today, 0.5))
+    try:                           # ready-made pilot pages (written by tools/build_pilots.js)
+        for sl in json.load(open(os.path.join(os.path.dirname(os.path.abspath(out)), 'data', 'pilots-static.json'), encoding='utf-8')):
+            urls.append((SITE + '/pilot/' + quote(sl, safe='-_.~') + '.html', today, 0.7))
+    except Exception:
+        pass
     lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for loc, mod, pr in urls:
         lines.append('<url><loc>%s</loc><lastmod>%s</lastmod><priority>%.1f</priority></url>' % (escape(loc), mod, pr))

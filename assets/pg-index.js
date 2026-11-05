@@ -12,7 +12,7 @@ UP.boot('home', U => {
   const nReg = REGIONS.filter(r => D.opps.some(o => o.regions.includes(r[0]))).length; if (nReg > 0) st.push(stat(nReg, 'world regions covered'));
   if (L.sessions) st.push(stat(L.sessions, 'sessions completed'));
   if (L.pilots) st.push(stat(L.pilots, 'pilots ready to guide you'));
-  if (U.seminarsHeld() > 0) st.push(stat(U.seminarsHeld(), 'free seminars held'));
+  if (U.seminarsHeld() > 0) st.push(stat(U.seminarsHeld(), 'seminars held'));
   if (L.reviews) st.push(stat(L.reviews, 'reviews from students'));
   if (C.yearsExperience) st.push(`<div class="stat"><b>${C.yearsExperience}+</b><span>years of experience</span></div>`);
   $('#stats').innerHTML = st.slice(0, 5).join('');
@@ -25,7 +25,10 @@ UP.boot('home', U => {
   const ft = D.news.filter(n => n.feat).sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 3); $('#featS').hidden = !ft.length; $('#featL').innerHTML = ft.map(U.newsCard).join('');
   $('#svcs').innerHTML = C.services.slice(0, 4).map(v => `<div class="box svc">${U.icon(v.icon)}<h3>${esc(v.name)}</h3><p class="mute" style="margin:0;font-size:.92rem">${esc(v.desc)}</p></div>`).join('');
   const up = D.seminars.filter(x => x.up)[0], past = D.seminars.filter(x => !x.up && x.rec)[0];
-  $('#semh').innerHTML = up ? U.semCard(up) : past ? U.semCard(past) : `<div class="semc"><h3>Next seminar coming soon</h3><p class="mute">Follow us to hear about the next free session first.</p>${C.facebook ? `<a class="btn" href="${esc(C.facebook)}" target="_blank" rel="noopener">Follow on Facebook</a>` : ''}</div>`;
+  // The seminar block sits lower on the home page and only appears when a seminar is announced (or there is a recording to watch).
+  $('#semS').hidden = !(up || past);
+  if (up) { $('#semE').textContent = 'Upcoming seminar'; $('#semT').textContent = 'Join our next seminar'; $('#semP').textContent = 'Reserve your seat for our next seminar on scholarships, applications and studying abroad.'; }
+  $('#semh').innerHTML = up ? U.semCard(up) : past ? U.semCard(past) : '';
   $('#revL').innerHTML = D.reviews.length ? D.reviews.slice(0, 12).map(U.reviewCard).join('') : '<div class="box c" style="grid-column:1/-1"><h3>Studied with us? Tell the next student how it went.</h3><p class="mute">Reviews are checked by our team before they are published.</p><a class="btn" href="reviews.html#rf">Write a review</a></div>'; U.car($('#revL'));
   const nw = D.news.slice().sort((a, b) => b.pin - a.pin || b.date.localeCompare(a.date)).slice(0, 3); $('#newsS').hidden = !nw.length; $('#newsL').innerHTML = nw.map(U.newsCard).join('');
 });

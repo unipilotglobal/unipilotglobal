@@ -669,3 +669,5 @@ dialog.m2.bk{width:min(620px,96vw)}dialog.m2.bk.sm{width:min(480px,96vw)}
   .phead+.sec{padding-top:30px}
 }
 @media(max-width:700px){.cmsg{white-space:normal;text-align:center;line-height:1.35;overflow:visible}.cbar .w{min-height:0}}
+
+.pbox .hw{margin:0;padding-left:20px;line-height:1.7;font-size:.95rem}
