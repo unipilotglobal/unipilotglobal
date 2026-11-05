@@ -22,7 +22,7 @@ const list = a => a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and
 
 async function load() {
   const base = 'slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url';
-  for (const cols of ['id,education,highlights,based_in,tagline,' + base, base]) {
+  for (const cols of ['id,education,highlights,based_in,tagline,from_price_cents,has_volunteer_slot,' + base, 'id,education,highlights,based_in,tagline,' + base, base]) {
     try {
       const r = await fetch(URL_ + '/rest/v1/v_pilot_cards?select=' + cols + '&limit=500', { headers: { apikey: KEY, Accept: 'application/json' } });
       if (!r.ok) continue; const j = await r.json(); if (Array.isArray(j)) return j;
@@ -42,7 +42,7 @@ function shellParts() {                      // header and footer, copied from t
 function pageFor(p, all, tpl, sh) {
   const url = SITE + '/pilot/' + p.slug + '.html', role = p.role, studied = p.studied, ttl = p.name + (role ? ', ' + role : ', UniPilot pilot') + ' | UNIPILOT GLOBAL';
   const dsc = cut(p.about || (p.name + ' is a UniPilot pilot' + (studied.length ? ' who studied in ' + list(studied) : '') + (p.tags.length ? ' with ' + list(p.tags.slice(0, 3)) : '') + '.'), 158);
-  const facts = [['Field', p.field], ['Studied in', list(studied)], ['Universities', list(p.unis)], ['Scholarships', list(p.tags)], ['Languages', list(p.langs)], ['Based in', p.loc]].filter(f => f[1]);
+  const facts = [['Field', p.field], ['Studied in', list(studied)], ['Universities', list(p.unis)], ['Scholarships', list(p.tags)], ['Languages', list(p.langs)], ['Based in', p.loc], ['Sessions', (p.from ? 'from ' + '\u20ac' + (p.from % 1 ? p.from.toFixed(2) : p.from) : '') + (p.from && p.free ? ', ' : '') + (p.free ? 'a free session is available' : '')]].filter(f => f[1]);
   const person = { '@type': 'Person', '@id': url + '#person', name: p.name, url, description: cut(p.about, 300) || undefined, jobTitle: role || undefined, image: p.photo || undefined, knowsLanguage: p.langs.length ? p.langs : undefined,
     knowsAbout: Array.from(new Set([p.field].concat(p.helps, p.tags).filter(Boolean))), alumniOf: p.unis.length ? p.unis.map(u => ({ '@type': 'CollegeOrUniversity', name: u })) : undefined, worksFor: { '@id': SITE + '/#org' } };
   const others = all.filter(o => o.slug !== p.slug && (o.field === p.field || o.studied.some(s => studied.includes(s)))).slice(0, 6);
@@ -79,7 +79,7 @@ function pageFor(p, all, tpl, sh) {
     const slug = String(r.slug || r.id || '').trim().toLowerCase(); if (!/^[a-z0-9-]{2,60}$/.test(slug) || !String(r.display_name || '').trim()) return null;
     const ph = String(r.photo_url || '').trim();
     return { slug, name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: String(r.tagline || '').trim(), about: String(r.bio || '').trim(), field: String(r.field || '').trim(), studied: arr(r.studied_in), unis: arr(r.universities), tags: arr(r.scholarships),
-      langs: arr(r.languages), helps: arr(r.helps_with), edu: arr(r.education), exp: arr(r.highlights), loc: String(r.based_in || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '' };
+      langs: arr(r.languages), helps: arr(r.helps_with), edu: arr(r.education), exp: arr(r.highlights), loc: String(r.based_in || '').trim(), from: +r.from_price_cents > 0 ? Math.round(+r.from_price_cents) / 100 : 0, free: r.has_volunteer_slot === true, photo: /^https:\/\//i.test(ph) ? ph : '' };
   }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
   const sh = shellParts(), tpl = fs.readFileSync(path.join(ROOT, 'pilots.html'), 'utf8').replace(/<!--PSTART-->[\s\S]*?<!--PEND-->/, '').replace(/<script type="application\/ld\+json" id="pilots-ld">[\s\S]*?<\/script>/, '');
   fs.mkdirSync(OUT, { recursive: true }); const keep = new Set();
