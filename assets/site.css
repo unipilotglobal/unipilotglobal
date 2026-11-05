@@ -741,3 +741,20 @@ dialog.m2.bk{width:min(620px,96vw)}dialog.m2.bk.sm{width:min(480px,96vw)}
 .pf-vf{margin:0;font-size:.92rem;color:var(--ink)}.pf-vf.ok{color:#12713f}
 .pf-res{display:grid;grid-template-columns:1fr 150px 84px 44px;gap:8px;margin-bottom:8px;align-items:center}.pf-res .btn{padding:9px 0;justify-content:center}
 @media(max-width:640px){.pf-res{grid-template-columns:1.5fr 1fr 44px}.pf-res [data-n]{grid-column:1/-1}.pf-res [data-y]{grid-column:2/3}}
+/* update 6 (v2): free session days, session descriptions, booking rules */
+.pnf{margin-top:2px}
+.pdays{margin:0 0 22px;padding:16px 18px;border-radius:16px;background:#f1faf5;border:1px solid #cfe9da}.pdays h4{margin:0 0 4px;font:600 1.1rem 'Fraunces',serif;color:var(--navy);text-transform:none;letter-spacing:0}.pdays>.mute{margin:0 0 12px;font-size:.92rem}.pdays .pdm{margin:10px 0 0;font-size:.84rem}
+.pdl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pdr{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1.5px solid #cfe9da;background:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink);min-width:0}.pdr:hover:not(:disabled){border-color:#12713f;box-shadow:0 0 0 3px #12713f1f}.pdr:focus-visible{outline:3px solid var(--gold);outline-offset:2px}.pdr:disabled{opacity:.6;cursor:not-allowed}
+.pdd{display:flex;flex-direction:column;flex:none;min-width:92px}.pdd b{font-weight:700;color:var(--navy)}.pdd span{font-size:.86rem;color:var(--mute)}
+.pdt{flex:1;min-width:0}.pdt b{display:block;font-weight:600;overflow-wrap:anywhere}.pdt b .fr{font-style:normal;font-size:.7rem;font-weight:700;background:#e0f3e8;color:#12713f;padding:1px 8px;border-radius:99px;margin-left:4px}.pdt small{display:block;color:var(--mute);font-size:.82rem;overflow-wrap:anywhere}
+.pds{flex:none;font-size:.8rem;font-weight:700;color:#12713f;background:#e0f3e8;padding:4px 10px;border-radius:99px;white-space:nowrap}.pds.full{color:#8a5a00;background:#fdf0d4}
+@media(max-width:560px){.pdr{flex-wrap:wrap;gap:6px 12px}.pdt{flex:1 1 100%;order:3}.pds{margin-left:auto}}
+.bk-card.off{opacity:.6;cursor:not-allowed;background:#f7f8fb}.bk-t .bk-ds{display:block;margin-top:2px;font-size:.84rem}
+.bk-sd{margin:0 0 10px;font-size:.92rem;color:var(--ink);line-height:1.45}
+.bk-wins{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#f1faf5;border:1px solid #cfe9da;font-size:.9rem}.bk-wins>b{display:block;margin-bottom:6px;color:var(--navy)}.bk-wins>div{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;padding:3px 0}.bk-wins i{font-style:normal;font-size:.76rem;font-weight:700;color:#12713f;background:#e0f3e8;padding:1px 8px;border-radius:99px}.bk-wins i.full{color:#8a5a00;background:#fdf0d4}.bk-wins small{flex:1 1 100%;color:var(--mute)}
+/* the pilot dashboard: planner and rules */
+.fsd-h{margin:0 0 4px;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.pl-box{margin-top:14px;padding:14px 16px;border:1.5px dashed #b9c7dd;border-radius:14px;background:#fbfcfe}.pl-box [hidden]{display:none!important}
+.pl-hint{font-size:.88rem;color:#12713f;margin:-4px 0 0;min-height:1.2em}
+.sv-dates{padding:10px 12px;border-radius:10px;background:#f1faf5;border:1px solid #cfe9da;font-size:.92rem;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
