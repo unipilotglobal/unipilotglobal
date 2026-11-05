@@ -25,11 +25,21 @@ async function load() {
   for (const cols of ['id,education,highlights,based_in,tagline,from_price_cents,has_volunteer_slot,' + base, 'id,education,highlights,based_in,tagline,' + base, base]) {
     try {
       const r = await fetch(URL_ + '/rest/v1/v_pilot_cards?select=' + cols + '&limit=500', { headers: { apikey: KEY, Accept: 'application/json' } });
-      if (!r.ok) continue; const j = await r.json(); if (Array.isArray(j)) return j;
+      if (!r.ok) continue; const j = await r.json(); if (Array.isArray(j)) { await addExtras(j); return j; }
     } catch (e) { console.log('Could not reach the database: ' + e.message); return null; }
   }
   return null;
 }
+
+// optional extras from database update 6 (verified badge, results, best for, top tip). If the update is not installed this simply adds nothing.
+async function addExtras(rows) {
+  try {
+    const r = await fetch(URL_ + '/rest/v1/v_pilot_extra?select=id,results,best_for,top_tip,verified_at&limit=500', { headers: { apikey: KEY, Accept: 'application/json' } });
+    if (!r.ok) return; const j = await r.json(); if (!Array.isArray(j)) return; const m = {}; j.forEach(x => { if (x && x.id) m[x.id] = x; });
+    rows.forEach(x => { const e = m[x.id]; if (e) { x.results = e.results; x.best_for = e.best_for; x.top_tip = e.top_tip; x.verified_at = e.verified_at; } });
+  } catch (e) { }
+}
+const OUTC = { won: 'Won', accepted: 'Accepted', interview: 'Interview', waitlisted: 'Waitlisted', rejected: 'Not selected' };
 
 function shellParts() {                      // header and footer, copied from the ready-made list page, so the pages look right before JavaScript starts
   try {
@@ -42,7 +52,7 @@ function shellParts() {                      // header and footer, copied from t
 function pageFor(p, all, tpl, sh) {
   const url = SITE + '/pilot/' + p.slug + '.html', role = p.role, studied = p.studied, ttl = p.name + (role ? ', ' + role : ', UniPilot pilot') + ' | UNIPILOT GLOBAL';
   const dsc = cut(p.about || (p.name + ' is a UniPilot pilot' + (studied.length ? ' who studied in ' + list(studied) : '') + (p.tags.length ? ' with ' + list(p.tags.slice(0, 3)) : '') + '.'), 158);
-  const facts = [['Field', p.field], ['Studied in', list(studied)], ['Universities', list(p.unis)], ['Scholarships', list(p.tags)], ['Languages', list(p.langs)], ['Based in', p.loc], ['Sessions', (p.from ? 'from ' + '\u20ac' + (p.from % 1 ? p.from.toFixed(2) : p.from) : '') + (p.from && p.free ? ', ' : '') + (p.free ? 'a free session is available' : '')]].filter(f => f[1]);
+  const facts = [['Field', p.field], ['Studied in', list(studied)], ['Universities', list(p.unis)], ['Scholarships', list(p.tags)], ['Languages', list(p.langs)], ['Based in', p.loc], ['Verified', p.ver ? 'Verified by UniPilot (award or admission letter checked)' : ''], ['Best for', list(p.best)], ['Sessions', (p.from ? 'from ' + '\u20ac' + (p.from % 1 ? p.from.toFixed(2) : p.from) : '') + (p.from && p.free ? ', ' : '') + (p.free ? 'a free session is available' : '')]].filter(f => f[1]);
   const person = { '@type': 'Person', '@id': url + '#person', name: p.name, url, description: cut(p.about, 300) || undefined, jobTitle: role || undefined, image: p.photo || undefined, knowsLanguage: p.langs.length ? p.langs : undefined,
     knowsAbout: Array.from(new Set([p.field].concat(p.helps, p.tags).filter(Boolean))), alumniOf: p.unis.length ? p.unis.map(u => ({ '@type': 'CollegeOrUniversity', name: u })) : undefined, worksFor: { '@id': SITE + '/#org' } };
   const others = all.filter(o => o.slug !== p.slug && (o.field === p.field || o.studied.some(s => studied.includes(s)))).slice(0, 6);
@@ -51,6 +61,8 @@ function pageFor(p, all, tpl, sh) {
     + '<div style="flex:1;min-width:240px"><span class="eyebrow">UniPilot pilot</span><h1 style="margin:4px 0 6px">' + esc(p.name) + '</h1>' + (role ? '<p style="font-size:1.1rem;margin:0 0 6px"><b>' + esc(role) + '</b></p>' : '') + (p.tagline && p.tagline !== role ? '<p class="mute" style="margin:0">' + esc(p.tagline) + '</p>' : '') + '</div></div>'
     + (facts.length ? '<dl style="margin:26px 0;display:grid;grid-template-columns:max-content 1fr;gap:8px 20px">' + facts.map(f => '<dt><b>' + esc(f[0]) + '</b></dt><dd style="margin:0">' + esc(f[1]) + '</dd>').join('') + '</dl>' : '')
     + (p.about ? '<h2>About ' + esc(p.name.split(' ')[0]) + '</h2><p style="white-space:pre-line">' + esc(p.about) + '</p>' : '')
+    + (p.tip ? '<blockquote style="margin:22px 0;padding:12px 18px;border-left:4px solid #E3A72F;background:#fff8e6"><b>' + esc(p.name.split(' ')[0]) + '\'s top tip:</b> ' + esc(p.tip) + '</blockquote>' : '')
+    + (p.results.length ? '<h2>Application results</h2><ul>' + p.results.map(x => '<li>' + esc(x.n) + ': ' + esc(OUTC[x.o] || x.o) + (x.y ? ' (' + esc(x.y) + ')' : '') + '</li>').join('') + '</ul>' : '')
     + (p.helps.length ? '<h2>How ' + esc(p.name.split(' ')[0]) + ' can help you</h2><ul>' + p.helps.map(h => '<li>' + esc(h) + '</li>').join('') + '</ul>' : '')
     + (p.edu.length ? '<h2>Education</h2><ul>' + p.edu.map(h => '<li>' + esc(h) + '</li>').join('') + '</ul>' : '')
     + (p.exp.length ? '<h2>Highlights</h2><ul>' + p.exp.map(h => '<li>' + esc(h) + '</li>').join('') + '</ul>' : '')
@@ -79,7 +91,8 @@ function pageFor(p, all, tpl, sh) {
     const slug = String(r.slug || r.id || '').trim().toLowerCase(); if (!/^[a-z0-9-]{2,60}$/.test(slug) || !String(r.display_name || '').trim()) return null;
     const ph = String(r.photo_url || '').trim();
     return { slug, name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: String(r.tagline || '').trim(), about: String(r.bio || '').trim(), field: String(r.field || '').trim(), studied: arr(r.studied_in), unis: arr(r.universities), tags: arr(r.scholarships),
-      langs: arr(r.languages), helps: arr(r.helps_with), edu: arr(r.education), exp: arr(r.highlights), loc: String(r.based_in || '').trim(), from: +r.from_price_cents > 0 ? Math.round(+r.from_price_cents) / 100 : 0, free: r.has_volunteer_slot === true, photo: /^https:\/\//i.test(ph) ? ph : '' };
+      langs: arr(r.languages), helps: arr(r.helps_with), edu: arr(r.education), exp: arr(r.highlights), loc: String(r.based_in || '').trim(), from: +r.from_price_cents > 0 ? Math.round(+r.from_price_cents) / 100 : 0, free: r.has_volunteer_slot === true, ver: !!r.verified_at, best: arr(r.best_for).slice(0, 6), tip: String(r.top_tip || '').trim().slice(0, 160),
+      results: (Array.isArray(r.results) ? r.results : []).slice(0, 8).map(x => x && typeof x === 'object' && /^(won|accepted|interview|waitlisted|rejected)$/.test(x.o) && String(x.n || '').trim().length > 1 ? { n: String(x.n).trim().slice(0, 80), o: x.o, y: /^(19|20)\d\d$/.test(String(x.y || '')) ? String(x.y) : '' } : null).filter(Boolean), photo: /^https:\/\//i.test(ph) ? ph : '' };
   }).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
   const sh = shellParts(), tpl = fs.readFileSync(path.join(ROOT, 'pilots.html'), 'utf8').replace(/<!--PSTART-->[\s\S]*?<!--PEND-->/, '').replace(/<script type="application\/ld\+json" id="pilots-ld">[\s\S]*?<\/script>/, '');
   fs.mkdirSync(OUT, { recursive: true }); const keep = new Set();

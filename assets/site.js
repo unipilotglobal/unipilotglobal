@@ -322,7 +322,10 @@
     if (!id || !/^[a-z0-9-]{2,60}$/.test(id) || !String(r.display_name || '').trim()) return null;
     const ph = String(r.photo_url || '').trim(), li = String(r.linkedin_url || '').trim();
     return { id, field: String(r.field || '').trim(), name: String(r.display_name).trim(), role: String(r.headline || '').trim(), tagline: String(r.tagline || '').trim(), about: String(r.bio || '').trim(), photo: /^https:\/\//i.test(ph) ? ph : '', alt: '', tags: arr(r.scholarships), edu: arr(r.education), exp: arr(r.highlights), langs: arr(r.languages), loc: String(r.based_in || '').trim(), studied: arr(r.studied_in), unis: arr(r.universities), helps: arr(r.helps_with), li: /^https:\/\//i.test(li) ? li : '', feat: false, fromDb: true, uuid: /^[0-9a-f-]{36}$/i.test(String(r.id || '')) ? String(r.id) : '', tz: String(r.timezone || '').trim(),
-      rate: Math.max(0, Math.min(5, +r.rating_avg || 0)), nrev: Math.max(0, parseInt(r.rating_count, 10) || 0), from: +r.from_price_cents > 0 ? Math.round(+r.from_price_cents) / 100 : 0, free: r.has_volunteer_slot === true };
+      rate: Math.max(0, Math.min(5, +r.rating_avg || 0)), nrev: Math.max(0, parseInt(r.rating_count, 10) || 0), from: +r.from_price_cents > 0 ? Math.round(+r.from_price_cents) / 100 : 0, free: r.has_volunteer_slot === true,
+      ver: !!r.verified_at, best: arr(r.best_for).slice(0, 6).map(x => x.slice(0, 60)), tip: String(r.top_tip || '').trim().slice(0, 160), vid: ytId(r.intro_video),
+      results: (Array.isArray(r.results) ? r.results : []).slice(0, 8).map(x => x && typeof x === 'object' ? { n: String(x.n || '').trim().slice(0, 80), o: /^(won|accepted|interview|waitlisted|rejected)$/.test(x.o) ? x.o : '', y: /^(19|20)\d\d$/.test(String(x.y || '')) ? String(x.y) : '' } : null).filter(x => x && x.n.length > 1 && x.o),
+      nxt: r.next_at && !isNaN(Date.parse(r.next_at)) ? String(r.next_at) : '' };
   };
   async function loadDbPilots() {
     if (!UP.accShown()) return [];
@@ -334,7 +337,14 @@
       if (!r.ok) r = await go('id,timezone,' + base);          // the full-profile database update is not installed yet
       if (!r.ok) r = await go(base);          // the database update for booking is not installed yet: still show the pilots
       clearTimeout(t); if (!r.ok) return []; const j = await r.json();
-      if (Array.isArray(j)) { try { localStorage.setItem('up_dbp', JSON.stringify({ t: Date.now(), r: j })); } catch (e) { } }   // remembered, so the next visit shows the pilots at once
+      if (Array.isArray(j)) {
+        // optional extras (verified badge, results, tip, video, next free time): if the database update is not installed they simply stay empty
+        const opt = async (path, init) => { try { const c2 = typeof AbortController === 'function' ? new AbortController() : null, t2 = setTimeout(() => { if (c2) c2.abort(); }, 5000); const q = await fetch(C.supabaseUrl + path, Object.assign({ signal: c2 ? c2.signal : undefined }, init, { headers: Object.assign({ apikey: C.supabaseKey, Accept: 'application/json' }, (init && init.headers) || {}) })); clearTimeout(t2); if (!q.ok) return []; const z = await q.json(); return Array.isArray(z) ? z : []; } catch (e) { return []; } };
+        const [ex, nx] = await Promise.all([opt('/rest/v1/v_pilot_extra?select=id,results,best_for,top_tip,intro_video,verified_at&limit=300'), opt('/rest/v1/rpc/fn_next_free_all', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })]);
+        const em = {}; ex.forEach(x => { if (x && x.id) em[x.id] = x; }); j.forEach(x => { const m = em[x.id]; if (m) { x.results = m.results; x.best_for = m.best_for; x.top_tip = m.top_tip; x.intro_video = m.intro_video; x.verified_at = m.verified_at; } });
+        try { localStorage.setItem('up_dbp', JSON.stringify({ t: Date.now(), r: j })); } catch (e) { }   // remembered, so the next visit shows the pilots at once
+        const nm = {}; nx.forEach(x => { if (x && x.pilot_id) nm[x.pilot_id] = x.next_at; }); j.forEach(x => { if (nm[x.id]) x.next_at = nm[x.id]; });      // the next free time changes by the minute: never remembered
+      }
       return Array.isArray(j) ? j.map(dbMap).filter(Boolean) : [];
     } catch (e) { return []; }
   }
@@ -538,11 +548,14 @@
     return UP.D.experts.map(e => { const t = e.tags.find(known), c = e.studied.find(x => cs.includes(cc(x))); return { e, sc: (t ? 3 : 0) + (c ? 2 : 0) + (e.feat ? .5 : 0), why: t ? 'Knows ' + t : c ? 'Studied in ' + c : '' }; }).filter(x => x.why).sort((a, b) => b.sc - a.sc); };
   UP.pilotMini = x => `<a class="pm2" href="pilots.html?pilot=${esc(x.e.id)}"><span class="pm2p">${UP.photoHTML(x.e)}</span><span class="pm2t"><b>${esc(x.e.name)}</b><span>${esc(x.e.role)}</span>${x.e.studied.length ? `<span class="pm2f">${x.e.studied.slice(0, 4).map(UP.flag).join('')}</span>` : ''}${x.why ? `<small>${esc(x.why)}</small>` : ''}</span></a>`;
   UP.tag2 = e => { const n = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); return !!e.tagline && n(e.tagline) !== n(e.role); };      // a tagline that repeats the role line is not shown twice
+  UP.nxtTxt = e => { const d = e.nxt ? new Date(e.nxt) : null; if (!d || isNaN(d) || d.getTime() < Date.now()) return ''; try { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '') + ' \u00b7 ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch (x) { return ''; } };
+  UP.nxtHTML = e => { const t = UP.nxtTxt(e); return t ? `<p class="mnx">Next free <b>${esc(t)}</b></p>` : ''; };
+  UP.vfHTML = e => e.ver ? '<span class="vf" title="Verified by UniPilot" aria-label="Verified by UniPilot">&#10003;</span>' : '';
   UP.eur = n => '€' + (n % 1 ? n.toFixed(2) : String(n));
   UP.langs = e => e.langs.slice().sort((a, b) => (/^(bangla|bengali)$/i.test(b) ? 1 : 0) - (/^(bangla|bengali)$/i.test(a) ? 1 : 0));      // Bangla first: a pilot who speaks it is a big reason to book
   UP.rateHTML = e => e.nrev > 0 && e.rate > 0 ? `<span class="rt" title="${e.rate.toFixed(1)} out of 5, ${e.nrev} review${e.nrev === 1 ? '' : 's'}">&#9733; ${e.rate.toFixed(1)} <i>(${e.nrev})</i></span>` : '<span class="nw">New</span>';
   UP.metaHTML = e => e.fromDb ? `<p class="mmeta">${UP.rateHTML(e)}${e.from ? `<span class="pr">from <b>${UP.eur(e.from)}</b></span>` : ''}${e.free ? '<span class="fr">Free session</span>' : ''}</p>` : '';
-  UP.mentorCard = e => `<article class="mc" tabindex="0" data-m="${esc(e.id)}"><div class="mph">${UP.photoHTML(e)}${e.studied.length ? `<div class="mflags">${e.studied.slice(0, 5).map(UP.flag).join('')}</div>` : ''}</div><div class="mb"><h3>${esc(e.name)}</h3><p class="mr">${esc(e.role)}</p>${UP.metaHTML(e)}${UP.tag2(e) ? `<p class="mt2">${esc(e.tagline)}</p>` : ''}<p class="mtags">${e.field ? `<span class="pill">${esc(e.field)}</span>` : ''}${e.tags.slice(0, 2).map(t => `<span class="pill g">${esc(t)}</span>`).join('')}</p>${e.langs.length ? `<p class="mlg">Speaks ${esc(UP.langs(e).slice(0, 3).join(' · '))}</p>` : ''}${e.helps.length ? `<p class="mh">${e.helps.slice(0, 3).map(h => `<span>${esc(h)}</span>`).join('')}</p>` : ''}<div class="mact"><button type="button" class="btn sm out" data-m="${esc(e.id)}">View profile</button><button type="button" class="btn sm" data-b="${esc(e.id)}">Book</button></div></div></article>`;
+  UP.mentorCard = e => `<article class="mc" tabindex="0" data-m="${esc(e.id)}"><div class="mph">${UP.photoHTML(e)}${e.studied.length ? `<div class="mflags">${e.studied.slice(0, 5).map(UP.flag).join('')}</div>` : ''}</div><div class="mb"><h3>${esc(e.name)}${UP.vfHTML(e)}</h3><p class="mr">${esc(e.role)}</p>${UP.metaHTML(e)}${UP.nxtHTML(e)}${UP.tag2(e) ? `<p class="mt2">${esc(e.tagline)}</p>` : ''}<p class="mtags">${e.field ? `<span class="pill">${esc(e.field)}</span>` : ''}${e.tags.slice(0, 2).map(t => `<span class="pill g">${esc(t)}</span>`).join('')}</p>${e.langs.length ? `<p class="mlg">Speaks ${esc(UP.langs(e).slice(0, 3).join(' · '))}</p>` : ''}${e.helps.length ? `<p class="mh">${e.helps.slice(0, 3).map(h => `<span>${esc(h)}</span>`).join('')}</p>` : ''}<div class="mact"><button type="button" class="btn sm out" data-m="${esc(e.id)}">View profile</button><button type="button" class="btn sm" data-b="${esc(e.id)}">Book</button></div></div></article>`;
   UP.ask = o => {
     let d = document.getElementById('askd'); if (!d) { d = document.createElement('dialog'); d.id = 'askd'; d.className = 'dlg'; document.body.appendChild(d); }
     d.innerHTML = `<button class="dx" type="button" aria-label="Close">&times;</button><h3>Ask an experienced advisor</h3><p class="mute">About: <b>${esc(o.name)}</b>. Tell us what you want to know. We reply by email or WhatsApp.</p><div id="askm"></div>

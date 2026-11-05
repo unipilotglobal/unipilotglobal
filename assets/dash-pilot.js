@@ -18,6 +18,9 @@
   const LANG_LIST = ['English', 'Bangla', 'Hindi', 'Urdu', 'Arabic', 'German', 'French', 'Spanish', 'Italian', 'Dutch', 'Polish', 'Russian', 'Turkish', 'Chinese', 'Japanese', 'Korean', 'Portuguese', 'Swedish'];
   const CTRY_LIST = ['Australia', 'Austria', 'Bangladesh', 'Belgium', 'Canada', 'China', 'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Hungary', 'India', 'Ireland', 'Italy', 'Japan', 'Malaysia', 'Netherlands', 'New Zealand', 'Norway', 'Poland', 'Portugal', 'Singapore', 'South Korea', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Arab Emirates', 'United Kingdom', 'United States'];
   const HELP_LIST = ['Scholarship search', 'SOP review', 'CV review', 'Interview preparation', 'Research proposal', 'Motivation letter', 'Recommendation letters', 'University choice', 'Language tests (IELTS, TOEFL)', 'Visa guidance', 'Life abroad', 'Funding and budget'];
+  const BEST_LIST = ['First-time applicants', "Bachelor's applicants", "Master's applicants", 'PhD applicants', 'Students with a small budget', 'Students from Bangladesh', 'Career changers', 'Women applicants', 'Applying again after a rejection'];
+  const OUTCOMES = [['won', 'Won'], ['accepted', 'Accepted'], ['interview', 'Interview'], ['waitlisted', 'Waitlisted'], ['rejected', 'Not selected']], MAX_RES = 8;
+  const YT = /^https:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[A-Za-z0-9_-]{11}([&?][A-Za-z0-9_=&.%-]*)?$/;
   const linesOf = a => Array.isArray(a) ? a.map(x => String(x || '').trim()).filter(Boolean) : [];
   const splitLines = v => String(v || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
 
@@ -26,6 +29,8 @@
   UP.dash.pilotForm = function (el, o) {
     const p = o.pilot, sb = o.sb, say = U.say, busy = U.busy;
     const tzs = (() => { try { if (Intl.supportedValuesOf) return Intl.supportedValuesOf('timeZone'); } catch (e) { } return ['UTC', 'Europe/Warsaw', 'Europe/Berlin', 'Asia/Dhaka', 'America/New_York']; })();
+    const HAS_NEW = 'results' in p;      // false until the database update 6 is installed: then these inputs stay hidden
+    const mail = (UP.C && UP.C.email) || '', vfNote = p.verified_at ? '<p class="pf-vf ok">&#10003; <b>Verified by UniPilot.</b> Students see this badge on your profile.</p>' : '<p class="pf-vf">Want the green <b>&#10003; Verified by UniPilot</b> badge? Send our team a copy of your award or admission letter' + (mail ? ' (' + esc(mail) + ')' : '') + '. We check it once and switch the badge on. Your documents stay private.</p>';
     el.innerHTML = '<form class="dx-form" id="pf" novalidate>' +
       '<div><label for="pf1">Name shown to students *</label><input id="pf1" maxlength="120" required value="' + esc(p.display_name) + '"></div>' +
       '<div><label for="pf2">Main field</label><select id="pf2"></select><input id="pf2o" maxlength="60" placeholder="Write your field" aria-label="Your field" hidden style="margin-top:8px"></div>' +
@@ -39,6 +44,11 @@
       '<div class="w2"><label>Universities</label><div id="pf7"></div></div>' +
       '<div class="w2"><label>Scholarships you know well</label><div id="pf8"></div></div>' +
       '<div class="w2"><label>Languages</label><div id="pf9"></div></div>' +
+      (HAS_NEW ? '<div class="w2 pf-x"><h4>Make your profile stand out</h4><p class="mute" style="margin:0 0 10px">Students choose the pilot who feels most real and most like them. These parts take about five minutes and help students decide. All of them are optional.</p>' + vfNote + '</div>' +
+      '<div class="w2"><label>Best for <small class="mute">(who you help best, up to 6)</small></label><div id="pf17"></div></div>' +
+      '<div class="w2"><label>Your application results <small class="mute">(up to ' + MAX_RES + ')</small></label><div id="pf18"></div><button type="button" class="btn out sm" id="pf18a" style="margin-top:8px">+ Add a result</button><small class="mute" style="display:block;margin-top:6px">Be honest: a mix of wins and "not selected" feels more real to students than a list of only wins. For example: DAAD, Won, 2024. Fulbright, Interview, 2023.</small></div>' +
+      '<div class="w2"><label for="pf19">Your top tip <small class="mute">(one sentence, max 160 characters)</small></label><input id="pf19" maxlength="160" placeholder="e.g. Start your motivation letter with a real story, not with your CV." value="' + esc(p.top_tip || '') + '"></div>' +
+      '<div class="w2"><label for="pf20">Intro video (optional)</label><input id="pf20" inputmode="url" placeholder="https://youtu.be/..." value="' + esc(p.intro_video || '') + '"><small class="mute">A 1-minute video where you say who you are, what you studied and how you help. Upload it to YouTube, choose <b>Unlisted</b>, and paste the link here. A short video helps students see who you are before they book.</small></div>' : '') +
       '<div><label for="pf10">Photo link (https)</label><input id="pf10" inputmode="url" placeholder="https://…" value="' + esc(p.photo_url || '') + '"><div class="pf-prev" id="pf10p" hidden><img id="pf10i" alt="Your photo as students will see it" width="72" height="72"><small class="mute" id="pf10t"></small></div><small class="mute">Paste a link to a clear photo of your face. Photo upload is coming soon.</small></div>' +
       '<div><label for="pf16">Based in (optional)</label><input id="pf16" maxlength="100" placeholder="e.g. Leipzig, Germany" value="' + esc(p.based_in || '') + '"></div>' +
       '<div><label for="pf11">LinkedIn link (optional)</label><input id="pf11" inputmode="url" placeholder="https://www.linkedin.com/in/…" value="' + esc(p.linkedin_url || '') + '"></div>' +
@@ -51,6 +61,16 @@
     const studied = U.tagBox($('#pf6', el), p.studied_in, { max: 8, label: 'Add a country', placeholder: 'Other: type and press Enter' }), unis = U.tagBox($('#pf7', el), p.universities, { max: 6, label: 'Add a university', placeholder: 'Type a university and press Enter' }), schs = U.tagBox($('#pf8', el), p.scholarships, { max: 8, label: 'Add a scholarship', placeholder: 'Other: type and press Enter' }), langs = U.tagBox($('#pf9', el), p.languages, { max: 6, label: 'Add a language', placeholder: 'Other: type and press Enter' });
     const pick = (host, box, list, noun) => { const sel = document.createElement('select'); sel.className = 'dx-pick'; sel.setAttribute('aria-label', 'Choose ' + noun + ' from the list'); sel.innerHTML = '<option value="">Choose ' + noun + ' from the list…</option>' + list.map(x => '<option>' + esc(x) + '</option>').join('') + '<option value="__o">Other (type your own below)</option>'; host.parentNode.insertBefore(sel, host); sel.onchange = () => { if (sel.value === '__o') box.focus(); else if (sel.value) box.add(sel.value); sel.value = ''; }; };
     pick($('#pf6', el), studied, CTRY_LIST, 'a country'); pick($('#pf8', el), schs, SCH_LIST, 'a scholarship'); pick($('#pf9', el), langs, LANG_LIST, 'a language');
+    // the new profile parts (only when the database update 6 is installed)
+    let best = null, resRows = []; const resBox = HAS_NEW ? $('#pf18', el) : null;
+    const resDraw = () => { resBox.innerHTML = resRows.map((r, i) => '<div class="pf-res" data-i="' + i + '"><input data-n maxlength="80" placeholder="Scholarship or university" aria-label="Scholarship or university" value="' + esc(r.n) + '"><select data-o aria-label="Result">' + OUTCOMES.map(o => '<option value="' + o[0] + '"' + (o[0] === r.o ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select><input data-y maxlength="4" inputmode="numeric" placeholder="Year" aria-label="Year (optional)" value="' + esc(r.y || '') + '"><button type="button" class="btn out sm" data-rm aria-label="Remove this result">&times;</button></div>').join(''); $('#pf18a', el).hidden = resRows.length >= MAX_RES; };
+    const resRead = () => $$('.pf-res', resBox).map(d => ({ n: $('[data-n]', d).value.trim(), o: $('[data-o]', d).value, y: $('[data-y]', d).value.trim() }));
+    if (HAS_NEW) {
+      best = U.tagBox($('#pf17', el), p.best_for, { max: 6, label: 'Add a group', placeholder: 'Other: type and press Enter' }); pick($('#pf17', el), best, BEST_LIST, 'a group');
+      resRows = (Array.isArray(p.results) ? p.results : []).map(r => ({ n: String(r.n || ''), o: String(r.o || 'won'), y: r.y == null ? '' : String(r.y) })); resDraw();
+      resBox.onclick = e => { const b = e.target.closest('[data-rm]'); if (!b) return; resRows = resRead(); resRows.splice(+b.closest('.pf-res').dataset.i, 1); resDraw(); };
+      $('#pf18a', el).onclick = () => { resRows = resRead(); if (resRows.length < MAX_RES) resRows.push({ n: '', o: 'won', y: '' }); resDraw(); const l = $$('.pf-res [data-n]', resBox); if (l.length) l[l.length - 1].focus(); };
+    }
     $('#pf5s', el).onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; const cur = helps.get(); if (!cur.some(x => x.toLowerCase() === b.dataset.s.toLowerCase())) cur.push(b.dataset.s); helps = U.tagBox($('#pf5', el), cur, HO); };
     const pimg = $('#pf10i', el), pbox = $('#pf10p', el), ptxt = $('#pf10t', el), pin = $('#pf10', el);
     const preview = () => { const v = pin.value.trim(); if (!v) { pbox.hidden = true; return; } pbox.hidden = false; if (!isUrl(v)) { pimg.removeAttribute('src'); pimg.hidden = true; ptxt.textContent = 'The link must start with https://'; return; } ptxt.textContent = 'Checking the photo…'; pimg.hidden = false; pimg.onload = () => { ptxt.textContent = 'This is how students see your photo.'; }; pimg.onerror = () => { pimg.hidden = true; ptxt.textContent = 'This link does not open as a picture. Open it in a new tab to check.'; }; pimg.src = v; };
@@ -63,10 +83,25 @@
       if (bio.value.length > MAX_BIO && !bioSame) return say(m, 'About you: please keep it to ' + MAX_BIO + ' characters. Short and clear is easier to read.');
       if (edu.length > MAX_EDU && !eduSame) return say(m, 'Education journey: please use at most ' + MAX_EDU + ' lines.'); if (high.length > MAX_HIGH && !highSame) return say(m, 'Experience and highlights: please use at most ' + MAX_HIGH + ' lines.');
       if ((!eduSame && edu.some(x => x.length > MAX_LINE)) || (!highSame && high.some(x => x.length > MAX_LINE))) return say(m, 'Each line can have at most ' + MAX_LINE + ' characters. Please shorten the long one.');
+      let extra2 = {};
+      if (HAS_NEW) {
+        const rs = resRead().filter(r => r.n || r.y), vraw = $('#pf20', el).value.trim(), tip = $('#pf19', el).value.trim();
+        if (rs.some(r => r.n.length < 2)) return say(m, 'Application results: please write the scholarship or university name in every row (or remove the empty row).');
+        if (rs.some(r => r.y && !/^(19|20)\d\d$/.test(r.y))) return say(m, 'Application results: the year must have 4 digits, for example 2024 (or leave it empty).');
+        const vid = vraw ? (UP.ytId && UP.ytId(vraw) ? 'https://youtu.be/' + UP.ytId(vraw) : '') : null; if (vraw && !vid) return say(m, 'Intro video: please paste a YouTube link, for example https://youtu.be/abcdefghijk');
+        extra2 = { results: rs.slice(0, MAX_RES).map(r => r.y ? { n: r.n, o: r.o, y: r.y } : { n: r.n, o: r.o }), best_for: best.get().map(x => x.slice(0, 60)).slice(0, 6), top_tip: tip.slice(0, 160) || null, intro_video: vid };
+      }
       const row = { display_name: name, headline: $('#pf3', el).value.trim() || null, bio: bio.value.trim() || null, field: fieldVal() || null, helps_with: helps.get(), studied_in: studied.get(), universities: unis.get(), scholarships: schs.get(), languages: langs.get(), photo_url: ph || null, linkedin_url: li || null, timezone: $('#pf12', el).value };
       const extra = { education: edu, highlights: high, based_in: based || null, tagline: tag || null };
       const b = $('#pfb', el); busy(b, true, 'Saving…');
-      try { let more = true; try { await run(sb.from('pilots').update(Object.assign({}, row, extra)).eq('id', p.id)); } catch (e1) { if (!/education|highlights|based_in|tagline|schema cache|column/i.test(String((e1 && e1.message) || ''))) throw e1; more = false; await run(sb.from('pilots').update(row).eq('id', p.id)); } if (!more) { say(m, 'Saved, but the new profile parts need the latest database update (patch 3) first.'); } if (o.own && row.timezone !== (p.timezone || 'UTC')) { try { await run(sb.from('availability_rules').update({ timezone: row.timezone }).eq('pilot_id', p.id)); } catch (e) { } } Object.assign(p, row, more ? extra : {}); if (more) say(m, 'Saved.', true); U.toast('Profile saved', true); if (o.onSaved) o.onSaved(p); }
+      try {
+        // newest columns first; if the database does not know them yet, fall back step by step so a save never fails for that reason
+        const COL = /schema cache|column|education|highlights|based_in|tagline|results|best_for|top_tip|intro_video/i, upd2 = x => run(sb.from('pilots').update(x).eq('id', p.id)); let lvl = HAS_NEW ? 2 : 1;
+        try { await upd2(Object.assign({}, row, extra, extra2)); }
+        catch (e1) { if (!COL.test(String((e1 && e1.message) || ''))) throw e1; lvl = 1; try { await upd2(Object.assign({}, row, extra)); } catch (e2) { if (!COL.test(String((e2 && e2.message) || ''))) throw e2; lvl = 0; await upd2(row); } }
+        if (lvl === 0) say(m, 'Saved, but the new profile parts need the latest database update (patch 3) first.'); else if (HAS_NEW && lvl === 1) say(m, 'Saved, but best for, results, tip and video need the latest database update (update 6) first.');
+        if (o.own && row.timezone !== (p.timezone || 'UTC')) { try { await run(sb.from('availability_rules').update({ timezone: row.timezone }).eq('pilot_id', p.id)); } catch (e) { } }
+        Object.assign(p, row, lvl >= 1 ? extra : {}, lvl === 2 ? extra2 : {}); if (lvl === 2 || (!HAS_NEW && lvl === 1)) say(m, 'Saved.', true); U.toast('Profile saved', true); if (o.onSaved) o.onSaved(p); }
       catch (e) { say(m, o.friendly(e)); } busy(b, false);
     };
   };
@@ -188,7 +223,7 @@
     // ---------------------------------------------------------------- reviews
     async function tReviews(el) {
       const revs = await run(sb.from('reviews').select('id,rating,comment,status,created_at').eq('pilot_id', uid).order('created_at', { ascending: false }));
-      el.innerHTML = '<div class="dx-card"><div class="dx-h"><h3>Reviews from students</h3>' + (P.rating_count ? '<span class="pill ok">' + Number(P.rating_avg).toFixed(1) + ' / 5 · ' + P.rating_count + '</span>' : '') + '</div>' + (revs.length ? revs.map(r => '<div class="dx-item"><div class="dx-item-main"><b>' + '★'.repeat(r.rating) + '<span style="color:#c8d1e0">' + '★'.repeat(5 - r.rating) + '</span></b>' + (r.comment ? '<p style="margin:4px 0">' + esc(r.comment) + '</p>' : '') + '<small>' + esc(U.fmtDate(r.created_at)) + (r.status !== 'published' ? ' · ' + (r.status === 'pending' ? 'waiting for our check' : 'not shown publicly') : '') + '</small></div></div>').join('') : U.empty('No reviews yet', 'After a session, students are asked for a short review. It appears here.')) + '</div>';
+      el.innerHTML = '<div class="dx-card"><div class="dx-h"><h3>Reviews from students</h3>' + (P.rating_count ? '<span class="pill ok">' + Number(P.rating_avg).toFixed(1) + ' / 5 · ' + P.rating_count + '</span>' : '') + '</div><p class="mute" style="margin:0 0 10px">Reviews are shown on your public profile with the student\'s first name. Our team can hide a review that is abusive or unfair.</p>' + (revs.length ? revs.map(r => '<div class="dx-item"><div class="dx-item-main"><b>' + '★'.repeat(r.rating) + '<span style="color:#c8d1e0">' + '★'.repeat(5 - r.rating) + '</span></b>' + (r.comment ? '<p style="margin:4px 0">' + esc(r.comment) + '</p>' : '') + '<small>' + esc(U.fmtDate(r.created_at)) + (r.status !== 'published' ? ' · ' + (r.status === 'pending' ? 'waiting for our check' : 'not shown publicly') : '') + '</small></div></div>').join('') : U.empty('No reviews yet', 'After a session, students are asked for a short review. It appears here.')) + '</div>';
     }
 
     // ---------------------------------------------------------------- account

@@ -82,10 +82,10 @@
   };
   // pilot rows WITHOUT the private columns (commission, agreement) that the database now keeps from the public; those come from v_pilot_terms
   // (a pilot reads their own, the team reads everyone's). If the database update is not installed yet, they are still plain columns, so both states work.
-  const PILOT_BASE = 'id,slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url,timezone,status,rating_avg,rating_count,created_at,updated_at', PILOT_FULL = PILOT_BASE + ',education,highlights,based_in,tagline', TERMS = 'commission_bps,contract_version,contract_accepted_at';
+  const PILOT_BASE = 'id,slug,display_name,headline,bio,field,studied_in,universities,scholarships,languages,helps_with,photo_url,linkedin_url,timezone,status,rating_avg,rating_count,created_at,updated_at', PILOT_FULL = PILOT_BASE + ',education,highlights,based_in,tagline', PILOT_NEW = PILOT_FULL + ',results,best_for,top_tip,intro_video,verified_at', TERMS = 'commission_bps,contract_version,contract_accepted_at';
   async function pilotRows(sb, uid) {
     const pick = (cols, from) => { const q = sb.from(from).select(cols); return uid ? q.eq('id', uid) : q; };
-    let r = await pick(PILOT_FULL, 'pilots'); if (r.error) r = await pick(PILOT_BASE, 'pilots'); if (r.error) throw r.error;
+    let r = await pick(PILOT_NEW, 'pilots'); if (r.error) r = await pick(PILOT_FULL, 'pilots'); if (r.error) r = await pick(PILOT_BASE, 'pilots'); if (r.error) throw r.error;      // newest first (update 6 columns), then the older column sets
     const rows = r.data || [];
     let t = await pick('id,' + TERMS, 'v_pilot_terms'); if (t.error) t = await pick('id,' + TERMS, 'pilots');
     if (!t.error && Array.isArray(t.data)) { const m = {}; t.data.forEach(x => { m[x.id] = x; }); rows.forEach(p => Object.assign(p, m[p.id] || {})); }
