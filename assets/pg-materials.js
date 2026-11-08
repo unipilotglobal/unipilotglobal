@@ -2,12 +2,29 @@ let ty = '', q = '', dt = false;
 UP.boot('materials', U => {
   const { C, $, $$, esc, D } = U, types = Array.from(new Set(D.materials.map(m => m.type)));
   $('#mt').innerHTML = D.materials.length ? ['All'].concat(types).map(c => `<button class="chip ${(c === 'All' ? '' : c) === ty ? 'on' : ''}" data-c="${esc(c === 'All' ? '' : c)}">${esc(c)}</button>`).join('') : '';
-  $('#mt').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { ty = b.dataset.c; list(); } };
-  $('#ms').oninput = e => { q = e.target.value.toLowerCase(); list(); };
+  const PER = 12; let pgn = 1;   // 12 materials on each page
+  $('#mt').onclick = e => { const b = e.target.closest('[data-c]'); if (b) { ty = b.dataset.c; pgn = 1; list(); } };
+  $('#ms').oninput = e => { q = e.target.value.toLowerCase(); pgn = 1; list(); };
   function list() {
     $$('.chip', $('#mt')).forEach(b => b.classList.toggle('on', b.dataset.c === ty));
     const l = D.materials.filter(m => (!ty || m.type === ty) && (!q || (m.title + ' ' + m.text + ' ' + m.cat + ' ' + m.rel.join(' ')).toLowerCase().includes(q)));
-    $('#ml').innerHTML = l.length ? l.map(U.matCard).join('') : D.materials.length ? '<p class="mute">Nothing matches your search yet.</p>' : '<div class="box c" style="grid-column:1/-1"><h3>Free materials are coming soon</h3><p class="mute">We are preparing guides, templates and checklists. Message us on WhatsApp if you need something specific.</p></div>';
+    const pages = Math.max(1, Math.ceil(l.length / PER)); if (pgn > pages) pgn = pages;
+    $('#ml').innerHTML = l.length ? l.slice((pgn - 1) * PER, pgn * PER).map(U.matCard).join('') : D.materials.length ? '<p class="mute">Nothing matches your search yet.</p>' : '<div class="box c" style="grid-column:1/-1"><h3>Free materials are coming soon</h3><p class="mute">We are preparing guides, templates and checklists. Message us on WhatsApp if you need something specific.</p></div>';
+    // Page buttons (only when there is more than one page)
+    let pg = $('#mpg');
+    if (!pg) {
+      pg = document.createElement('div'); pg.id = 'mpg'; pg.setAttribute('role', 'navigation'); pg.setAttribute('aria-label', 'Material pages'); pg.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:24px 0 4px';
+      $('#ml').after(pg);
+    }
+    // The page can build itself twice (first from saved data, then from fresh data), so the newest run always takes over the buttons.
+    pg.onclick = e => { const b = e.target.closest('[data-p]'); if (!b || b.disabled) return; pgn = +b.dataset.p; list(); const top = $('#ml').getBoundingClientRect().top + window.scrollY - 110; window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' }); };
+    if (pages < 2) { pg.innerHTML = ''; return; }
+    const nums = []; for (let i = 1; i <= pages; i++) if (pages <= 7 || i === 1 || i === pages || Math.abs(i - pgn) <= 1) nums.push(i);
+    const btn = (p, label, on, off) => `<button type="button" class="chip${on ? ' on' : ''}" data-p="${p}"${on ? ' aria-current="page"' : ''}${off ? ' disabled style="opacity:.4;cursor:default"' : ''}>${label}</button>`;
+    let h = btn(pgn - 1, '&lsaquo; Previous', false, pgn === 1), last = 0;
+    nums.forEach(n => { if (n - last > 1) h += '<span class="mute" aria-hidden="true">&hellip;</span>'; h += btn(n, n, n === pgn, false); last = n; });
+    h += btn(pgn + 1, 'Next &rsaquo;', false, pgn === pages);
+    pg.innerHTML = h + `<span class="mute" style="flex-basis:100%;text-align:center;font-size:.9rem">Showing ${(pgn - 1) * PER + 1}&ndash;${Math.min(pgn * PER, l.length)} of ${l.length}</span>`;
   }
   // Seminars (this page replaced the old seminars page)
   const upS = D.seminars.filter(s => s.up).sort((a, b) => a.date.localeCompare(b.date)), pastS = D.seminars.filter(s => !s.up).sort((a, b) => b.date.localeCompare(a.date));
