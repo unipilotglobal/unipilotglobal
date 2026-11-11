@@ -182,7 +182,7 @@ const TPL = {
       c.fillStyle = P.cardSub; c.globalAlpha = .3; c.fillRect(x + 48, foot, w - 96, 2); c.globalAlpha = 1;
       label(c, 'UniPilot crew', x + 48, foot + 30 * k, 18, P.cardSub); barcode(c, x + w - 48 - 230, foot + 20 * k, 230, 44 * k, d.name, P.cardInk);
     },
-    cap: d => `🧑‍✈️ Meet your pilot: ${d.name}\n\n${d.headline || ''}${d.studied ? '\n🌍 Studied in: ' + d.studied : ''}${d.helps ? '\n🤝 Can help with: ' + d.helps : ''}\n\nPilots are real mentors who walked this path themselves. Read the profile and book a session.\n👉 https://${SITE}/pilots.html\n\n#UniPilotGlobal #StudyAbroad #Mentor`
+    cap: d => `✈️ Meet your pilot: ${d.name}\n\n${d.headline || ''}${d.studied ? '\n🌍 Studied in: ' + d.studied : ''}${d.helps ? '\n🤝 Can help with: ' + d.helps : ''}\n\nPilots are real mentors who walked this path themselves. Read the profile and book a session.\n👉 https://${SITE}/pilots.html\n\n#UniPilotGlobal #StudyAbroad #Mentor`
   },
   tip: {
     name: "Captain's tip", use: 'One tip or a quote', cta: 'More free tips',
@@ -449,11 +449,208 @@ function start(U) {
   $('#ps-pfile').addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => { photo = im; render(); }; im.src = r.result; }; r.readAsDataURL(f); });
   $('#ps-save').addEventListener('click', () => { render(); const name = `unipilot-${st.tpl}-${new Date().toISOString().slice(0, 10)}.png`; try { cv.toBlob(b => { if (!b) return say('The picture could not be made. Remove the photo and try again.', true); const a = document.createElement('a'), u = URL.createObjectURL(b); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); say('Saved as ' + name + ' in your Downloads folder.'); }, 'image/png'); } catch (x) { say('The picture could not be made. Remove the photo and try again.', true); } });
   $('#ps-copy').addEventListener('click', () => { const t = $('#ps-cap'), done = () => say('Caption copied.'); try { navigator.clipboard.writeText(t.value).then(done).catch(() => { t.select(); say('Press Ctrl+C to copy the selected caption.'); }); } catch (e) { t.select(); say('Press Ctrl+C to copy the selected caption.'); } });
-  const again = () => { render(); thumbs('#ps-gal', galItems()); thumbs('#ps-ideas', list); };
+  const again = () => { render(); thumbs('#ps-gal', galItems()); thumbs('#ps-ideas', list); evRedraw(); };
   const lg = new Image(); lg.onload = () => { logoImg = lg; again(); }; lg.src = 'images/logo-mark.jpg';
   try { const bin = atob(MONO), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i); const ff = new FontFace('DM Mono', buf.buffer, { weight: '500' }); ff.load().then(f => { document.fonts.add(f); again(); }).catch(() => { }); } catch (e) { }
   if (document.fonts && document.fonts.load) Promise.all(['700 40px Fraunces', '500 20px "DM Sans"', '600 20px "DM Sans"', '700 20px "DM Sans"'].map(f => document.fonts.load(f).catch(() => { }))).then(again);
   window.__ups = { drawAll, TPL, THEMES, ideas, st, data, list: () => list };
+}
+
+
+/* =====================================================================
+   EVENT KIT: one event form makes a whole set of banners in five shapes.
+   ===================================================================== */
+const FORMATS = { pt: [1080, 1350, 'Portrait 4:5'], sq: [1080, 1080, 'Square'], st: [1080, 1920, 'Story 9:16'], wd: [1920, 1080, 'Wide 16:9'], ev: [1920, 1005, 'Event cover'] };
+const EV_BLANK = { kind: 'Free live seminar', title: 'Higher study abroad: where to start', tagline: 'An honest walk through scholarships, documents and timelines, with live questions.', date: '', time: '7:00 PM Bangladesh · 2:00 PM Germany', where: 'Live on Zoom', points: 'How to shortlist the right scholarships\nWhich documents to prepare first\nA timeline you can follow\nLive questions and answers', seal: 'Free', cta: 'Register free', speakers: [{ name: 'Speaker name', role: 'PhD researcher, Germany', img: '' }, { name: 'Second speaker', role: 'Scholarship winner, Italy', img: '' }], partners: [], teaser: 'Something new is landing soon', lastline: 'Registration closes soon', liveline: 'We are live now', thanks: 'Thank you for joining us', recap: 'The recording and the slides are on our website.' };
+const evImgs = {}; let evRedraw = () => { };
+function evImg(src) { if (!src) return null; const e = evImgs[src]; if (e) return e.ok ? e.im : null; const im = new Image(), rec = evImgs[src] = { im, ok: false }; if (/^https:/i.test(src)) im.crossOrigin = 'anonymous'; im.onload = () => { try { const t = document.createElement('canvas'); t.width = t.height = 2; t.getContext('2d').drawImage(im, 0, 0, 2, 2); t.toDataURL(); rec.ok = true; evRedraw(); } catch (x) { } }; im.src = src; return null; }
+const evWhen = (E, short) => { if (!E.date) return ''; try { return new Date(E.date + 'T12:00:00').toLocaleDateString('en-GB', short ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return E.date; } };
+const evLine = E => [evWhen(E, true), E.time, E.where].filter(Boolean).join('  ·  ');
+const kick = P => P.ink === '#FFFFFF' ? P.accent : P.ink;
+
+function evText(c, P, R, o) {
+  let y = R.y; if (o.kicker) { label(c, o.kicker, o.center ? R.x + R.w / 2 : R.x, y, 21, kick(P), o.center ? 'center' : 'left'); y += 46; }
+  const al = o.center ? 'center' : 'left', tx = o.center ? R.x + R.w / 2 : R.x, sb = o.sub ? fitBox(c, o.sub, 500, F.s, R.w, Math.max(40, R.h * .32), o.subHi || 34, 20, 1.32) : null;
+  const tb = fitBox(c, o.title || '', 700, F.d, R.w, Math.max(50, R.h - (y - R.y) - (sb ? sb.h + 26 : 0)), o.hi || 104, 32, 1.07); y = put(c, tb, 700, F.d, tx, y, o.color || P.ink, al) + (sb ? 22 : 0);
+  if (sb) y = put(c, sb, 500, F.s, tx, y, P.sub, al); return y;
+}
+function evInfo(c, P, R, E) {
+  const cells = [['When', evWhen(E)], ['Time', E.time], ['Where', E.where]].filter(a => a[1]); if (!cells.length) return;
+  shadowCard(c, R.x, R.y, R.w, R.h, 26, P.card); const cw = (R.w - 56) / cells.length;
+  cells.forEach(([l, v], i) => { const cx = R.x + 28 + i * cw; if (i) { c.strokeStyle = P.cardSub; c.globalAlpha = .5; c.lineWidth = 3; c.setLineDash([8, 10]); c.beginPath(); c.moveTo(cx - 12, R.y + 20); c.lineTo(cx - 12, R.y + R.h - 20); c.stroke(); c.setLineDash([]); c.globalAlpha = 1; } label(c, l, cx, R.y + R.h * .16, 18, P.cardAccent); put(c, fitBox(c, v, 700, F.s, cw - 30, R.h * .58, 33, 17, 1.18), 700, F.s, cx, R.y + R.h * .16 + 30, P.cardInk); });
+}
+function avatar(c, P, cx, cy, d, sp, sq) {
+  const im = evImg(sp.img); c.save(); if (sq) rr(c, cx - d / 2, cy - d / 2, d, d, d * .14); else { c.beginPath(); c.arc(cx, cy, d / 2, 0, 7); } c.clip();
+  if (im) { const s = Math.max(d / im.width, d / im.height), w = im.width * s, h = im.height * s; c.drawImage(im, cx - w / 2, cy - h / 2, w, h); }
+  else { c.fillStyle = P.cardAccent; c.fillRect(cx - d / 2, cy - d / 2, d, d); setF(c, 700, d * .46, F.d); c.fillStyle = '#FFFFFF'; c.textAlign = 'center'; c.fillText((String(sp.name || 'S').trim()[0] || 'S').toUpperCase(), cx, cy - d * .27); c.textAlign = 'left'; }
+  c.restore(); if (!sq) { c.beginPath(); c.arc(cx, cy, d / 2 + 5, 0, 7); c.strokeStyle = P.accent; c.lineWidth = 5; c.stroke(); }
+}
+function evSpeakers(c, P, R, list, cards) {
+  const n = list.length; if (!n) return; const wide = R.w / R.h, cols = wide > 2.6 ? n : n === 1 ? 1 : n <= 4 ? (wide < .75 ? 1 : 2) : 3, rows = Math.ceil(n / cols), gap = 18, cw = (R.w - gap * (cols - 1)) / cols, ch = (R.h - gap * (rows - 1)) / rows;
+  list.forEach((sp, i) => {
+    const x = R.x + (i % cols) * (cw + gap), y = R.y + Math.floor(i / cols) * (ch + gap), side = cw > ch * 1.7;
+    if (cards) shadowCard(c, x, y, cw, ch, 24, P.card); const ink = cards ? P.cardInk : P.ink, sub = cards ? P.cardSub : P.sub, pad = cards ? 20 : 4;
+    if (side) { const d = Math.min(ch - pad * 2 - 6, cw * .32); avatar(c, P, x + pad + d / 2 + 5, y + ch / 2, d, sp); const tx = x + pad + d + 26, tw = cw - (tx - x) - pad, nb = fitBox(c, sp.name, 700, F.d, tw, ch * .5, 44, 18, 1.1), rb = sp.role ? fitBox(c, sp.role, 500, F.s, tw, ch * .34, 26, 15, 1.22) : null, th = nb.h + (rb ? rb.h + 6 : 0); let ty = y + (ch - th) / 2; ty = put(c, nb, 700, F.d, tx, ty, ink) + 6; if (rb) put(c, rb, 500, F.s, tx, ty, sub); }
+    else { const d = Math.min(cw - pad * 2 - 20, ch * .52); avatar(c, P, x + cw / 2, y + pad + d / 2 + 6, d, sp); let ty = y + pad + d + 24; const nb = fitBox(c, sp.name, 700, F.d, cw - pad * 2, (y + ch - ty) * .52, 42, 17, 1.1); ty = put(c, nb, 700, F.d, x + cw / 2, ty, ink, 'center') + 6; if (sp.role) put(c, fitBox(c, sp.role, 500, F.s, cw - pad * 2, Math.max(20, y + ch - ty - pad), 25, 14, 1.22), 500, F.s, x + cw / 2, ty, sub, 'center'); }
+  });
+}
+function logoTile(c, x, y, w, h, p) { rr(c, x, y, w, h, 18); c.fillStyle = '#FFFFFF'; c.fill(); c.strokeStyle = 'rgba(10,26,51,.14)'; c.lineWidth = 2; c.stroke(); const im = p.own ? logoImg : evImg(p.img); if (im) { const s = Math.min((w - 28) / im.width, (h - 24) / im.height), iw = im.width * s, ih = im.height * s; c.drawImage(im, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih); } else { const fb = fitBox(c, p.name || 'Partner', 700, F.s, w - 28, h - 20, 30, 14, 1.12); put(c, fb, 700, F.s, x + w / 2, y + (h - fb.h) / 2, '#0A1A33', 'center'); } }
+function evPartners(c, P, R, list, text) {
+  if (!list.length) return; label(c, text || 'In collaboration with', R.x, R.y, 17, P.sub); const y = R.y + 32, h = R.h - 32, gap = 14, w = Math.min(h * 2.4, (R.w - gap * (list.length - 1)) / list.length);
+  list.forEach((p, i) => logoTile(c, R.x + i * (w + gap), y, w, h, p));
+}
+function bulletList(c, P, R, pts) { const n = Math.max(pts.length, 1), gap = Math.min(176, R.h / n); pts.forEach((p, i) => { const cy = R.y + gap * (i + .5); check(c, R.x + 26, cy, Math.min(26, gap * .3), P.accent, P.accentInk); const fb = fitBox(c, p, 600, F.s, R.w - 80, gap - 14, 50, 20, 1.2); put(c, fb, 600, F.s, R.x + 76, cy - fb.h / 2 + 2, P.ink); }); }
+function sealAt(c, P, x, y, r, t) { if (!t) return; c.save(); c.translate(x, y); c.rotate(-.2); c.beginPath(); c.arc(0, 0, r, 0, 7); c.fillStyle = P.bg; c.globalAlpha = .82; c.fill(); c.globalAlpha = 1; c.strokeStyle = P.accent; c.lineWidth = 6; c.stroke(); c.lineWidth = 2; c.beginPath(); c.arc(0, 0, r - 12, 0, 7); c.stroke(); const sb = fitBox(c, String(t).toUpperCase(), 700, F.d, r * 1.5, r * 1.1, r * .5, 14, 1.05); put(c, sb, 700, F.d, 0, -sb.h / 2, P.accent, 'center'); c.restore(); }
+const cut = (R, a, b, land) => land ? [{ x: R.x, y: R.y, w: R.w * a - 24, h: R.h }, { x: R.x + R.w * a + 24, y: R.y, w: R.w * b - 24, h: R.h }] : null;
+const dateStrip = (c, P, R, E) => { const t = evLine(E); if (!t) return 0; const h = 62; rr(c, R.x, R.y + R.h - h, R.w, h, 31); c.fillStyle = P.soft; c.fill(); c.strokeStyle = P.line; c.lineWidth = 2; c.stroke(); const fb = fitBox(c, t, 700, F.s, R.w - 50, 40, 27, 15, 1.2); put(c, fb, 700, F.s, R.x + R.w / 2, R.y + R.h - h + (h - fb.size) / 2 - 2, P.ink, 'center'); return h + 22; };
+
+const EV = {
+  teaser: { name: 'Surprise teaser', day: -21, draw(c, P, E, R, g) {
+    const A = g.land ? cut(R, .56, .44, true) : null, T = A ? A[0] : { x: R.x, y: R.y, w: R.w, h: R.h * .5 }, V = A ? A[1] : { x: R.x, y: R.y + R.h * .5, w: R.w, h: R.h * .5 };
+    evText(c, P, T, { kicker: 'Coming soon', title: E.teaser || 'Something new is landing soon', sub: E.date ? 'Save the date: ' + evWhen(E) : 'Stay tuned. Details in a few days.', hi: 108 });
+    const r = Math.min(V.w, V.h) * .42, cx = V.x + V.w / 2, cy = V.y + V.h / 2; c.strokeStyle = P.accent; for (let i = 0; i < 3; i++) { c.globalAlpha = 1 - i * .3; c.lineWidth = 6 - i * 2; c.beginPath(); c.arc(cx, cy, r * (1 - i * .2), 0, 7); c.stroke(); } c.globalAlpha = 1; c.save(); c.translate(cx, cy); c.rotate(-.6); const sw = c.createLinearGradient(0, 0, r, 0); sw.addColorStop(0, P.accent); sw.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = sw; c.globalAlpha = .35; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, r, 0, .9); c.closePath(); c.fill(); c.restore(); c.globalAlpha = 1;
+    setF(c, 700, r * 1.05, F.d); c.fillStyle = P.ink; c.textAlign = 'center'; c.fillText('?', cx, cy - r * .62); c.textAlign = 'left';
+  }, cap: E => `👀 ${E.teaser || 'Something new is landing soon'}\n\n${E.date ? 'Save the date: ' + evWhen(E) + '.' : 'Details in a few days.'} Can you guess what it is? Tell us in the comments.\n\n#UniPilotGlobal #ComingSoon #StudyAbroad` },
+
+  announce: { name: 'Main announcement', day: -14, draw(c, P, E, R, g) {
+    const sp = E.speakers.filter(s => s.name), pt = E.partners.filter(p => p.name || p.img);
+    if (g.land) { const [L, V] = cut(R, .58, .42, true), ih = 140; evText(c, P, { x: L.x, y: L.y, w: L.w - (sp.length && E.seal ? 160 : 0), h: L.h - ih - 30 }, { kicker: E.kind, title: E.title, sub: E.tagline, hi: 92 }); evInfo(c, P, { x: L.x, y: L.y + L.h - ih, w: L.w, h: ih }, E); const ph = pt.length ? 120 : 0; if (sp.length) evSpeakers(c, P, { x: V.x, y: V.y, w: V.w, h: V.h - ph - (ph ? 24 : 0) }, sp.slice(0, 4), true); else sealAt(c, P, V.x + V.w / 2, V.y + (V.h - ph) / 2, Math.min(V.w, V.h - ph) * .3, E.seal || E.kind); if (ph) evPartners(c, P, { x: V.x, y: V.y + V.h - ph, w: V.w, h: ph }, pt.slice(0, 3)); if (sp.length && E.seal) sealAt(c, P, L.x + L.w - 72, L.y + 76, 70, E.seal); }
+    else { const k = R.h / 990, ph = pt.length ? 118 : 0, ih = 136 * Math.max(.85, Math.min(k, 1.15)), sh = sp.length ? Math.min(300, R.h * .25) : 0, th = R.h - ph - ih - sh - (ph ? 22 : 0) - (sh ? 22 : 0) - 24; evText(c, P, { x: R.x, y: R.y, w: R.w - (E.seal ? 170 : 0), h: th }, { kicker: E.kind, title: E.title, sub: E.tagline, hi: 96 * Math.min(1.25, Math.max(k, .8)) }); let y = R.y + th + 24; if (sh) { evSpeakers(c, P, { x: R.x, y, w: R.w, h: sh }, sp.slice(0, 4), false); y += sh + 22; } evInfo(c, P, { x: R.x, y, w: R.w, h: ih }, E); y += ih + 22; if (ph) evPartners(c, P, { x: R.x, y, w: R.w, h: ph }, pt.slice(0, 4)); if (E.seal) sealAt(c, P, R.x + R.w - 76, R.y + 84, 74, E.seal); }
+  }, cap: E => `📣 ${E.kind}: ${E.title}\n\n${E.tagline || ''}\n\n🗓 ${evWhen(E)}${E.time ? '\n⏰ ' + E.time : ''}${E.where ? '\n📍 ' + E.where : ''}${E.speakers.filter(s => s.name).length ? '\n🎤 ' + E.speakers.filter(s => s.name).map(s => s.name).join(', ') : ''}${E.partners.filter(p => p.name).length ? '\n🤝 With ' + E.partners.filter(p => p.name).map(p => p.name).join(', ') : ''}\n\nRegister here 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #StudyAbroad #Scholarships` },
+
+  collab: { name: 'Collaboration', day: -12, need: E => E.partners.some(p => p.name || p.img), draw(c, P, E, R, g) {
+    const pt = [{ own: true, name: 'UniPilot Global' }].concat(E.partners.filter(p => p.name || p.img).slice(0, 3)), n = pt.length, th = Math.min(R.h * .26, 230), gap = 64, tw = Math.min(th * 1.5, (R.w - gap * (n - 1)) / n), tot = tw * n + gap * (n - 1); let x = R.x + (R.w - tot) / 2; const y = R.y + 50;
+    label(c, 'Together', R.x + R.w / 2, R.y, 21, kick(P), 'center');
+    pt.forEach((p, i) => { logoTile(c, x, y, tw, th, p); if (i < n - 1) { setF(c, 700, 54, F.d); c.fillStyle = P.accent === '#0A1A33' ? P.ink : P.accent; c.textAlign = 'center'; c.fillText('×', x + tw + gap / 2, y + th / 2 - 34); c.textAlign = 'left'; } x += tw + gap; });
+    const names = E.partners.filter(p => p.name).map(p => p.name), ds = dateStrip(c, P, R, E), T = { x: R.x + (g.land ? R.w * .12 : 0), y: y + th + 44, w: R.w * (g.land ? .76 : 1), h: R.h - th - 94 - ds - 16 };
+    evText(c, P, T, { kicker: 'UniPilot Global' + (names.length ? ' × ' + names.join(' × ') : '') + ' present', title: E.title, sub: T.h > 250 ? E.tagline : '', hi: 88, center: true });
+  }, cap: E => `🤝 UniPilot Global × ${E.partners.filter(p => p.name).map(p => p.name).join(' × ')}\n\nWe are happy to work together on: ${E.title}\n\n🗓 ${evWhen(E)}${E.time ? '\n⏰ ' + E.time : ''}${E.where ? '\n📍 ' + E.where : ''}\n\nRegister here 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #Collaboration #StudyAbroad` },
+
+  agenda: { name: 'What you will learn', day: -10, need: E => lines(E.points).length > 0, draw(c, P, E, R, g) {
+    const pts = lines(E.points).slice(0, 6);
+    if (g.land) { const [L, V] = cut(R, .46, .54, true), ds = dateStrip(c, P, L, E); evText(c, P, { x: L.x, y: L.y, w: L.w, h: L.h - ds }, { kicker: 'What you will learn', title: E.title, sub: E.kind, hi: 78 }); bulletList(c, P, V, pts); }
+    else { const ds = dateStrip(c, P, R, E), th = R.h * .3; const y = evText(c, P, { x: R.x, y: R.y, w: R.w, h: th }, { kicker: 'What you will learn', title: E.title, hi: 72 }) + 26; bulletList(c, P, { x: R.x, y, w: R.w, h: R.y + R.h - ds - y }, pts); }
+  }, cap: E => `🧭 What you will learn in "${E.title}"\n\n${lines(E.points).map(p => '✅ ' + p).join('\n')}\n\n🗓 ${evWhen(E)}${E.time ? ' · ' + E.time : ''}\n\nRegister here 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #StudyAbroad #Scholarships` },
+
+  lineup: { name: 'Speaker line-up', day: -7, need: E => E.speakers.filter(s => s.name).length > 1, draw(c, P, E, R, g) {
+    const sp = E.speakers.filter(s => s.name).slice(0, 6), ds = dateStrip(c, P, R, E);
+    if (g.land) { const [L, V] = cut({ x: R.x, y: R.y, w: R.w, h: R.h - ds }, .36, .64, true); evText(c, P, L, { kicker: 'Meet your speakers', title: E.title, sub: E.kind, hi: 70 }); evSpeakers(c, P, V, sp, true); }
+    else { const y = evText(c, P, { x: R.x, y: R.y, w: R.w, h: R.h * .2 }, { kicker: 'Meet your speakers', title: E.title, hi: 62 }) + 28; evSpeakers(c, P, { x: R.x, y, w: R.w, h: R.y + R.h - ds - y }, sp, true); }
+  }, cap: E => `🎤 Meet your speakers for "${E.title}"\n\n${E.speakers.filter(s => s.name).map(s => '• ' + s.name + (s.role ? ', ' + s.role : '')).join('\n')}\n\n🗓 ${evWhen(E)}${E.time ? ' · ' + E.time : ''}\n\nRegister here 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #StudyAbroad #Speakers` },
+
+  speaker: { name: 'Speaker spotlight', day: -5, need: E => E.speakers.some(s => s.name), draw(c, P, E, R, g) {
+    const list = E.speakers.filter(s => s.name), sp = list[Math.min(g.sel | 0, list.length - 1)] || { name: '' }, ds = dateStrip(c, P, R, E), H = R.h - ds;
+    if (g.land) { const d = Math.min(H, R.w * .4); shadowCard(c, R.x, R.y + (H - d) / 2, d, d, d * .14, P.card); avatar(c, P, R.x + d / 2, R.y + H / 2, d - 28, sp, true); evText(c, P, { x: R.x + d + 56, y: R.y + H * .1, w: R.w - d - 56, h: H * .8 }, { kicker: 'Speaker', title: sp.name, sub: (sp.role ? sp.role + '\n' : '') + 'Speaking at: ' + E.title, hi: 100 }); }
+    else { const d = Math.min(R.w * .72, H * .5); shadowCard(c, R.x + (R.w - d) / 2, R.y, d, d, d * .14, P.card); avatar(c, P, R.x + R.w / 2, R.y + d / 2, d - 28, sp, true); evText(c, P, { x: R.x, y: R.y + d + 34, w: R.w, h: H - d - 34 }, { kicker: 'Speaker', title: sp.name, sub: (sp.role ? sp.role + '\n' : '') + 'Speaking at: ' + E.title, hi: 84, center: true }); }
+  }, cap: (E, g) => { const sp = E.speakers.filter(s => s.name)[g.sel | 0] || {}; return `🎤 Speaker spotlight: ${sp.name}\n\n${sp.role || ''}\n\n${sp.name} will speak at "${E.title}".\n🗓 ${evWhen(E)}${E.time ? ' · ' + E.time : ''}\n\nRegister here 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #StudyAbroad #Speaker`; } },
+
+  countdown: { name: 'Countdown', day: -3, draw(c, P, E, R, g) {
+    const n = g.n, big = n > 1 ? String(n) : n === 1 ? 'Tomorrow' : 'Today', unit = n > 1 ? 'days to go' : n === 1 ? 'we take off' : 'is the day', ds = dateStrip(c, P, R, E), H = R.h - ds;
+    const B = g.land ? { x: R.x, y: R.y, w: R.w * .44, h: H } : { x: R.x, y: R.y, w: R.w, h: H * .5 }, T = g.land ? { x: R.x + R.w * .48, y: R.y + H * .12, w: R.w * .52, h: H * .76 } : { x: R.x, y: R.y + H * .52, w: R.w, h: H * .48 };
+    label(c, 'Countdown', B.x, B.y, 21, kick(P)); const bb = fitBox(c, big, 700, F.d, B.w, B.h - 110, n > 1 ? Math.min(B.h * .8, 520) : 190, 60, 1); put(c, bb, 700, F.d, B.x, B.y + 44, P.accent === '#0A1A33' ? P.ink : P.accent); put(c, fitBox(c, unit, 700, F.s, B.w, 60, 46, 24), 700, F.s, B.x + 6, B.y + 44 + bb.size * 1.02, P.ink);
+    evText(c, P, T, { title: E.title, sub: E.kind + (E.seal ? ' · ' + E.seal : ''), hi: 100, subHi: 38 });
+  }, cap: (E, g) => `⏳ ${g.n > 1 ? g.n + ' days to go' : g.n === 1 ? 'Tomorrow' : 'Today is the day'}: ${E.title}\n\n🗓 ${evWhen(E)}${E.time ? '\n⏰ ' + E.time : ''}${E.where ? '\n📍 ' + E.where : ''}\n\nHave you registered yet? 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #Countdown #StudyAbroad` },
+
+  lastcall: { name: 'Final boarding call', day: -2, draw(c, P, E, R, g) {
+    const ds = dateStrip(c, P, R, E), H = R.h - ds, w = g.land ? R.w * .62 : R.w; evText(c, P, { x: R.x, y: R.y, w, h: H * (g.land ? 1 : .62) }, { kicker: 'Final boarding call', title: E.lastline || 'Registration closes soon', sub: E.title + (E.tagline ? '\n' + E.tagline : ''), hi: 104 });
+    const r = Math.min(g.land ? R.w * .16 : R.w * .2, H * .22); sealAt(c, P, g.land ? R.x + R.w * .82 : R.x + R.w - r - 20, g.land ? R.y + H / 2 : R.y + H - r - 20, r, E.seal === 'Free' ? 'Last seats' : (E.seal || 'Last seats'));
+    c.strokeStyle = P.accent; c.lineWidth = 5; c.lineCap = 'round'; c.setLineDash([2, 16]); c.beginPath(); c.moveTo(R.x, R.y + H - 30); c.lineTo(R.x + (g.land ? R.w * .6 : R.w * .5), R.y + H - 30); c.stroke(); c.setLineDash([]); c.lineCap = 'butt'; plane(c, R.x + (g.land ? R.w * .6 : R.w * .5) + 30, R.y + H - 30, 26, Math.PI / 2, P.accent === '#0A1A33' ? P.ink : P.accent);
+  }, cap: E => `🛫 Final boarding call: ${E.title}\n\n${E.lastline || 'Registration closes soon'}. If you were planning to join, this is the moment.\n\n🗓 ${evWhen(E)}${E.time ? ' · ' + E.time : ''}\n\nRegister here 👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #LastCall #StudyAbroad` },
+
+  live: { name: 'We are live', day: 0, draw(c, P, E, R, g) {
+    const V = g.land ? { x: R.x + R.w * .62, y: R.y, w: R.w * .38, h: R.h } : { x: R.x, y: R.y + R.h * .56, w: R.w, h: R.h * .44 }, T = g.land ? { x: R.x, y: R.y, w: R.w * .58, h: R.h } : { x: R.x, y: R.y, w: R.w, h: R.h * .54 };
+    evText(c, P, T, { kicker: 'On air', title: E.liveline || 'We are live now', sub: E.title + (E.where ? '\n' + E.where : ''), hi: 112 });
+    const cx = V.x + V.w / 2, cy = V.y + V.h / 2, r = Math.min(V.w, V.h) * .2; for (let i = 3; i >= 1; i--) { c.beginPath(); c.arc(cx, cy, r * (1 + i * .62), 0, 7); c.strokeStyle = '#E5484D'; c.globalAlpha = .5 - i * .12; c.lineWidth = 6; c.stroke(); } c.globalAlpha = 1; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fillStyle = '#E5484D'; c.fill(); label(c, 'Live', cx, cy - r * .2, r * .42, '#FFFFFF', 'center');
+  }, cap: E => `🔴 ${E.liveline || 'We are live now'}: ${E.title}\n\n${E.where ? '📍 ' + E.where + '\n\n' : ''}Join us and bring your questions.\n👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #LiveNow #StudyAbroad` },
+
+  thanks: { name: 'Thank you', day: 1, draw(c, P, E, R, g) {
+    const sp = E.speakers.filter(s => s.name).slice(0, 6), pt = E.partners.filter(p => p.name || p.img).slice(0, 4), ph = pt.length ? 118 : 0, sh = sp.length ? (g.land ? R.h : Math.min(320, R.h * .28)) : 0;
+    if (g.land) { const [L, V] = cut(R, .56, .44, true); evText(c, P, { x: L.x, y: L.y, w: L.w, h: L.h - ph - 24 }, { kicker: 'Mission complete', title: E.thanks || 'Thank you for joining us', sub: E.title + (E.recap ? '\n' + E.recap : ''), hi: 96 }); if (ph) evPartners(c, P, { x: L.x, y: L.y + L.h - ph, w: L.w, h: ph }, pt, 'With thanks to'); if (sp.length) evSpeakers(c, P, V, sp, true); }
+    else { const th = R.h - ph - sh - (ph ? 24 : 0) - (sh ? 24 : 0); evText(c, P, { x: R.x, y: R.y, w: R.w, h: th }, { kicker: 'Mission complete', title: E.thanks || 'Thank you for joining us', sub: E.title + (E.recap ? '\n' + E.recap : ''), hi: 100 }); let y = R.y + th + 24; if (sh) { evSpeakers(c, P, { x: R.x, y, w: R.w, h: sh }, sp, false); y += sh + 24; } if (ph) evPartners(c, P, { x: R.x, y, w: R.w, h: ph }, pt, 'With thanks to'); }
+  }, cap: E => `🙏 ${E.thanks || 'Thank you for joining us'}\n\n"${E.title}" is complete. ${E.recap || ''}${E.speakers.filter(s => s.name).length ? '\n\nThank you to our speakers: ' + E.speakers.filter(s => s.name).map(s => s.name).join(', ') + '.' : ''}${E.partners.filter(p => p.name).length ? '\nThank you to our partners: ' + E.partners.filter(p => p.name).map(p => p.name).join(', ') + '.' : ''}\n\n👉 https://${SITE}/materials.html#seminars\n\n#UniPilotGlobal #ThankYou #StudyAbroad` }
+};
+
+function evDraw(cv, it, E, o) {
+  const [W, H] = FORMATS[o.fmt] || FORMATS.pt; if (cv.width !== W) cv.width = W; if (cv.height !== H) cv.height = H;
+  const c = cv.getContext('2d'); c.setTransform(1, 0, 0, 1, 0, 0); c.textBaseline = 'top'; c.textAlign = 'left'; c.globalAlpha = 1; c.setLineDash([]); c.shadowColor = 'transparent';
+  const P = THEMES[o.theme] || THEMES.night, top = o.fmt === 'st' ? 190 : 0, bot = o.fmt === 'st' ? 250 : 0, land = W > H;
+  const S = land ? W / 1440 : 1, LW = W / S, LH = H / S; c.scale(S, S);      // wide shapes are drawn on a 1440-wide page and enlarged, so text stays readable on a small screen
+  frameBgV(c, P, LW, LH, o.bgv | 0); c.save(); c.translate(0, top); header(c, P, LW, o); c.restore(); footer(c, P, land ? 1080 : LW, LH - bot, E.cta || 'Register free');
+  EV[it.kind].draw(c, P, E, { x: 64, y: 200 + top, w: LW - 128, h: LH - bot - 176 - 200 - top }, { land, W: LW, H: LH, sel: it.sel, n: it.n });
+}
+/* The posting plan: which banner, how many days before or after the event. */
+function evItems(E) {
+  const out = [], sp = E.speakers.filter(s => s.name), add = (kind, day, name, extra) => { if (EV[kind].need && !EV[kind].need(E)) return; out.push(Object.assign({ kind, day, name: name || EV[kind].name }, extra || {})); };
+  add('teaser', -21); add('announce', -14); add('collab', -12); add('agenda', -10); add('lineup', -7, sp.length > 1 ? 'Speaker line-up' : '');
+  sp.slice(0, 6).forEach((s, i) => add('speaker', -6 + Math.min(i, 2), 'Speaker: ' + s.name, { sel: i }));
+  add('countdown', -3, '3 days to go', { n: 3 }); add('lastcall', -2); add('countdown', -1, 'Tomorrow', { n: 1 }); add('countdown', 0, 'Today', { n: 0 }); add('live', 0); add('thanks', 1);
+  return out;
+}
+
+/* ---------- a tiny zip writer, so the whole kit saves as one file ---------- */
+function zipStore(files) {
+  const tbl = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; tbl[n] = c >>> 0; }
+  const crc = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = tbl[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }, enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = v => [v & 255, (v >>> 8) & 255], u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  files.forEach(f => { const nm = enc.encode(f.name), cr = crc(f.data), head = new Uint8Array([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0].concat(u32(cr), u32(f.data.length), u32(f.data.length), u16(nm.length), [0, 0]));
+    parts.push(head, nm, f.data); cen.push(new Uint8Array([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0].concat(u32(cr), u32(f.data.length), u32(f.data.length), u16(nm.length), [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], u32(off))), nm); off += head.length + nm.length + f.data.length; });
+  const csz = cen.reduce((a, b) => a + b.length, 0); return new Blob(parts.concat(cen, [new Uint8Array([0x50, 0x4b, 5, 6, 0, 0, 0, 0].concat(u16(files.length), u16(files.length), u32(csz), u32(off), [0, 0]))]), { type: 'application/zip' });
+}
+
+function startEvents(U) {
+  const $ = s => document.querySelector(s), cv = $('#pe-cv'), KEY = 'ups_event';
+  let E; try { E = Object.assign({}, EV_BLANK, JSON.parse(localStorage.getItem(KEY) || 'null') || {}); } catch (x) { E = Object.assign({}, EV_BLANK); }
+  if (!E.date) { const d = new Date(Date.now() + 14 * DAY); E.date = d.toISOString().slice(0, 10); } E.speakers = (E.speakers || []).slice(0, 6); E.partners = (E.partners || []).slice(0, 4);
+  const st = { fmt: 'pt', theme: 'night', bgv: 0, stamp: true, cur: 1 }; let items = [], capTouched = false, timer = 0;
+  const say = (t, bad) => { const m = $('#pe-msg'); m.textContent = t; m.style.color = bad ? '#D6453D' : ''; };
+  const keep = () => { try { localStorage.setItem(KEY, JSON.stringify(E)); } catch (x) { say('Photos are too large to remember for next time. They still work now.', true); } };
+  const press = (sel, v) => document.querySelectorAll(sel + ' button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v))));
+  const opt = () => ({ fmt: st.fmt, theme: st.theme, bgv: st.bgv, stamp: st.stamp });
+  const when = it => { if (!E.date) return ''; const d = new Date(new Date(E.date + 'T12:00:00').getTime() + it.day * DAY), past = d < today0(); return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (past ? ' (passed)' : ''); };
+  function big() { const it = items[st.cur] || items[0]; if (!it) return; evDraw(cv, it, E, opt()); $('#pe-name').textContent = it.name + ' · ' + FORMATS[st.fmt][2] + ' · ' + FORMATS[st.fmt][0] + '×' + FORMATS[st.fmt][1]; if (!capTouched) $('#pe-cap').value = EV[it.kind].cap(E, it).replace(/\n{3,}/g, '\n\n').trim(); }
+  function grid() {
+    items = evItems(E); if (st.cur >= items.length) st.cur = 0; const [W, H] = FORMATS[st.fmt], tw = 240, th = Math.round(tw * H / W);
+    $('#pe-grid').innerHTML = items.map((it, i) => `<button type="button" data-i="${i}" aria-pressed="${i === st.cur}"><canvas width="${tw}" height="${th}"></canvas><b>${U.esc(it.name)}</b><small>${it.day === 0 ? 'Event day' : it.day < 0 ? -it.day + ' days before' : 'The day after'}${E.date ? ' · ' + U.esc(when(it)) : ''}</small></button>`).join('');
+    const off = document.createElement('canvas'); document.querySelectorAll('#pe-grid canvas').forEach((t, i) => { evDraw(off, items[i], E, opt()); const x = t.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(off, 0, 0, t.width, t.height); });
+  }
+  const all = () => { grid(); big(); }; evRedraw = () => { clearTimeout(timer); timer = setTimeout(all, 60); };
+  const soon = () => { clearTimeout(timer); timer = setTimeout(() => { keep(); all(); }, 250); };
+
+  /* people and partner rows */
+  function rows() {
+    $('#pe-sp').innerHTML = E.speakers.map((s, i) => `<div class="pe-rowi"><input type="text" data-sp="${i}" data-k="name" placeholder="Name" aria-label="Speaker ${i + 1} name" value="${U.esc(s.name || '')}"><input type="text" data-sp="${i}" data-k="role" placeholder="Role, for example PhD researcher, Germany" aria-label="Speaker ${i + 1} role" value="${U.esc(s.role || '')}"><label class="btn out pe-up">${s.img ? 'Change photo' : 'Add photo'}<input type="file" accept="image/*" data-spf="${i}" hidden></label><button type="button" class="pe-x" data-spx="${i}" aria-label="Remove speaker ${i + 1}">&times;</button></div>`).join('');
+    $('#pe-pt').innerHTML = E.partners.map((p, i) => `<div class="pe-rowi"><input type="text" data-pt="${i}" data-k="name" placeholder="Club, university or platform name" aria-label="Partner ${i + 1} name" value="${U.esc(p.name || '')}"><label class="btn out pe-up">${p.img ? 'Change logo' : 'Add logo'}<input type="file" accept="image/*" data-ptf="${i}" hidden></label><button type="button" class="pe-x" data-ptx="${i}" aria-label="Remove partner ${i + 1}">&times;</button></div>`).join('');
+    $('#pe-addsp').disabled = E.speakers.length >= 6; $('#pe-addpt').disabled = E.partners.length >= 4;
+    const ex = (U.D.experts || []).filter(e => e.name); $('#pe-pilot').innerHTML = '<option value="">Add one of your pilots…</option>' + ex.map((e, i) => `<option value="${i}">${U.esc(e.name)}</option>`).join(''); $('#pe-pilot').hidden = !ex.length;
+  }
+  const shrink = (file, max, png, done) => { const r = new FileReader(); r.onload = () => { const im = new Image(); im.onload = () => { const s = Math.min(1, max / Math.max(im.width, im.height)), t = document.createElement('canvas'); t.width = Math.round(im.width * s); t.height = Math.round(im.height * s); const x = t.getContext('2d'); if (!png) { x.fillStyle = '#fff'; x.fillRect(0, 0, t.width, t.height); } x.drawImage(im, 0, 0, t.width, t.height); done(png ? t.toDataURL('image/png') : t.toDataURL('image/jpeg', .86)); }; im.src = r.result; }; r.readAsDataURL(file); };
+  ['kind', 'title', 'tagline', 'date', 'time', 'where', 'points', 'seal', 'cta', 'teaser', 'lastline', 'liveline', 'thanks', 'recap'].forEach(k => { const el = $('#pe-' + k); if (!el) return; el.value = E[k] || ''; el.addEventListener('input', () => { E[k] = el.value; capTouched = false; soon(); }); });
+  $('#pe-form').addEventListener('submit', e => e.preventDefault());
+  $('#pe-form').addEventListener('input', e => { const t = e.target; if (t.dataset.sp != null) { E.speakers[+t.dataset.sp][t.dataset.k] = t.value; capTouched = false; soon(); } else if (t.dataset.pt != null) { E.partners[+t.dataset.pt][t.dataset.k] = t.value; capTouched = false; soon(); } });
+  $('#pe-form').addEventListener('change', e => { const t = e.target, f = t.files && t.files[0]; if (!f) return; if (t.dataset.spf != null) shrink(f, 520, false, u => { E.speakers[+t.dataset.spf].img = u; keep(); rows(); all(); }); else if (t.dataset.ptf != null) shrink(f, 420, true, u => { E.partners[+t.dataset.ptf].img = u; keep(); rows(); all(); }); });
+  $('#pe-form').addEventListener('click', e => { const a = e.target.closest('[data-spx]'), b = e.target.closest('[data-ptx]'); if (a) { E.speakers.splice(+a.dataset.spx, 1); keep(); rows(); all(); } else if (b) { E.partners.splice(+b.dataset.ptx, 1); keep(); rows(); all(); } });
+  $('#pe-addsp').addEventListener('click', () => { if (E.speakers.length < 6) { E.speakers.push({ name: '', role: '', img: '' }); rows(); } });
+  $('#pe-addpt').addEventListener('click', () => { if (E.partners.length < 4) { E.partners.push({ name: '', img: '' }); rows(); } });
+  $('#pe-pilot').addEventListener('change', e => { const p = (U.D.experts || []).filter(x => x.name)[+e.target.value]; if (!p || e.target.value === '' || E.speakers.length >= 6) return; E.speakers.push({ name: p.name, role: p.role || p.tagline || '', img: p.photo || '' }); keep(); rows(); all(); });
+  $('#pe-new').addEventListener('click', () => { if (!$('#pe-new').dataset.sure) { $('#pe-new').dataset.sure = '1'; $('#pe-new').textContent = 'Click again to clear this event'; return; } delete $('#pe-new').dataset.sure; $('#pe-new').textContent = 'Start a new event'; E = JSON.parse(JSON.stringify(EV_BLANK)); E.title = ''; E.tagline = ''; E.points = ''; E.speakers = []; E.date = new Date(Date.now() + 14 * DAY).toISOString().slice(0, 10); ['kind', 'title', 'tagline', 'date', 'time', 'where', 'points', 'seal', 'cta', 'teaser', 'lastline', 'liveline', 'thanks', 'recap'].forEach(k => { const el = $('#pe-' + k); if (el) el.value = E[k] || ''; }); keep(); rows(); all(); });
+
+  $('#pe-fmt').innerHTML = Object.keys(FORMATS).map(k => `<button type="button" data-v="${k}" aria-pressed="false">${FORMATS[k][2]}</button>`).join('');
+  $('#pe-theme').innerHTML = Object.keys(THEMES).map(k => `<button type="button" data-v="${k}" aria-pressed="false"><span class="ps-sw" style="background:${THEMES[k].bg}"></span>${THEME_NAMES[k]}</button>`).join('');
+  $('#pe-bg').innerHTML = BG_NAMES.map((n, i) => `<button type="button" data-v="${i}" aria-pressed="false">${n}</button>`).join('');
+  const seg = (sel, key, num) => $(sel).addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; st[key] = num ? +b.dataset.v : b.dataset.v; press(sel, st[key]); all(); });
+  seg('#pe-fmt', 'fmt'); seg('#pe-theme', 'theme'); seg('#pe-bg', 'bgv', true); press('#pe-fmt', st.fmt); press('#pe-theme', st.theme); press('#pe-bg', st.bgv);
+  $('#pe-look').addEventListener('click', () => { const th = Object.keys(THEMES); st.theme = th[(th.indexOf(st.theme) + 1 + Math.floor(Math.random() * (th.length - 1))) % th.length]; st.bgv = (st.bgv + 1 + Math.floor(Math.random() * 3)) % 4; press('#pe-theme', st.theme); press('#pe-bg', st.bgv); all(); });
+  $('#pe-stamp').addEventListener('change', e => { st.stamp = e.target.checked; all(); });
+  $('#pe-grid').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (!b) return; st.cur = +b.dataset.i; capTouched = false; document.querySelectorAll('#pe-grid button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); big(); $('#pe-stage').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  $('#pe-cap').addEventListener('input', () => { capTouched = true; });
+  const slug = t => String(t || 'event').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'event';
+  const dl = (blob, name) => { const a = document.createElement('a'), u = URL.createObjectURL(blob); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); };
+  const blobOf = c2 => new Promise((res, rej) => { try { c2.toBlob(b => b ? res(b) : rej(new Error('empty')), 'image/png'); } catch (x) { rej(x); } });
+  $('#pe-save').addEventListener('click', () => { big(); const it = items[st.cur], name = `unipilot-${slug(E.title)}-${it.kind}${it.sel != null ? '-' + (it.sel + 1) : ''}${it.n != null ? '-' + it.n : ''}-${st.fmt}.png`; blobOf(cv).then(b => { dl(b, name); say('Saved as ' + name); }).catch(() => say('The picture could not be made. A photo from another website may be blocking it: add the photo from your computer instead.', true)); });
+  $('#pe-zip').addEventListener('click', async () => { const btn = $('#pe-zip'); btn.disabled = true; say('Making all banners…'); try { const off = document.createElement('canvas'), files = [], caps = []; for (let i = 0; i < items.length; i++) { const it = items[i]; evDraw(off, it, E, opt()); const b = await blobOf(off), nm = String(i + 1).padStart(2, '0') + '-' + slug(it.name) + '.png'; files.push({ name: nm, data: new Uint8Array(await b.arrayBuffer()) }); caps.push(nm + '  |  post on: ' + (when(it) || (it.day + ' days')) + '\n\n' + EV[it.kind].cap(E, it).replace(/\n{3,}/g, '\n\n').trim() + '\n\n' + '-'.repeat(60)); } files.push({ name: 'captions-and-posting-plan.txt', data: new TextEncoder().encode('\uFEFF' + E.title + '\r\n' + evLine(E) + '\r\n\r\n' + caps.join('\n\n').replace(/\n/g, '\r\n')) }); dl(zipStore(files), `unipilot-${slug(E.title)}-kit-${st.fmt}.zip`); say(items.length + ' banners and the captions saved as one zip file.'); } catch (x) { say('The kit could not be made. A photo from another website may be blocking it: add the photo from your computer instead.', true); } btn.disabled = false; });
+  $('#pe-copy').addEventListener('click', () => { const t = $('#pe-cap'), done = () => say('Caption copied.'); try { navigator.clipboard.writeText(t.value).then(done).catch(() => { t.select(); say('Press Ctrl+C to copy the selected caption.'); }); } catch (x) { t.select(); say('Press Ctrl+C to copy the selected caption.'); } });
+  rows(); all(); window.__upe = { evDraw, evItems, EV, FORMATS, get E() { return E; }, st, redraw: all };
+  return all;
 }
 
 /* ---------- team only ---------- */
@@ -461,7 +658,9 @@ let started = false, checking = false;
 UP.boot('studio', U => {
   const gate = document.getElementById('ps-gate'), app = document.getElementById('ps-app'), show = (h) => { gate.innerHTML = h; gate.hidden = false; app.hidden = true; };
   if (started || checking) return;                       // the site builds a page twice (saved data, then fresh data); the studio starts once
-  const go = () => { if (started) return; started = true; gate.hidden = true; app.hidden = false; start(U); };
+  const go = () => { if (started) return; started = true; gate.hidden = true; app.hidden = false; start(U);
+    let evOn = false; const tab = v => { document.querySelectorAll('#ps-tabs button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === v))); document.getElementById('ps-daily').hidden = v !== 'daily'; document.getElementById('ps-event').hidden = v !== 'event'; if (v === 'event') { if (!evOn) { evOn = true; startEvents(U); } else evRedraw(); } try { history.replaceState(null, '', v === 'event' ? '#event' : location.pathname); } catch (e) { } };
+    document.getElementById('ps-tabs').addEventListener('click', e => { const x = e.target.closest('[data-v]'); if (x) tab(x.dataset.v); }); if (location.hash === '#event') tab('event'); };
   if (!U.accShown || !U.accShown()) return show('<h2>Team page</h2><p class="mute">Accounts are switched off, so this page cannot check who you are.</p>');
   const u = U.sessUser();
   if (!u) return show('<h2>Team page</h2><p class="mute">Sign in with your team account to open the Post Studio.</p><a class="btn" href="account.html?next=studio.html">Sign in</a>');
