@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://gqhqvwwdrnrxwgfolxvu.supabase.co https://challenges.cloudflare.com https://cloudflareinsights.com https://docs.google.com https://formsubmit.co https://api.web3forms.com https://script.google.com https://script.googleusercontent.com; frame-src https://www.youtube-nocookie.com https://www.youtube.com https://challenges.cloudflare.com; media-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" data-csp>
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
+<title>Post Studio | UNIPILOT GLOBAL</title>
+<link rel="icon" type="image/png" href="images/favicon.png">
+<link rel="stylesheet" href="assets/site.css?v=946a25d5">
+<style>
+.ps-wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px;display:grid;gap:22px}
+.ps-gatebox{max-width:520px;margin:70px auto;padding:30px;border:1px solid var(--line);border-radius:16px;background:#fff;text-align:center}
+.ps-panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}
+.ps-step{font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 10px;font-weight:700}
+.ps-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between}
+.ps-head h1{margin:0;font-size:1.9rem}
+.ps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px}
+.ps-grid button{font:inherit;color:inherit;background:none;cursor:pointer;display:grid;gap:5px;justify-items:start;padding:7px;border-radius:12px;border:2px solid transparent;text-align:left}
+.ps-grid button:hover{background:var(--mist)}
+.ps-grid canvas{width:100%;height:auto;border-radius:8px;display:block;border:1px solid var(--line)}
+.ps-grid b{font-size:.84rem;line-height:1.25}
+.ps-grid small{color:var(--mute);font-size:.76rem}
+.ps-gal{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));margin-bottom:22px}
+.ps-gal button{justify-items:center;text-align:center;font-size:.78rem;font-weight:600}
+.ps-gal button[aria-pressed="true"]{border-color:var(--gold);background:#fdf6e3}
+.ps-desk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,430px);gap:22px;align-items:start}
+@media (max-width:900px){.ps-desk{grid-template-columns:minmax(0,1fr)}.ps-stage{order:-1;position:static!important}}
+.ps-row{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;margin-bottom:22px}
+.ps-seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:22px;padding:3px;gap:2px}
+.ps-seg button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:6px 13px;border-radius:999px;font-weight:600;font-size:.84rem}
+.ps-seg button[aria-pressed="true"]{background:var(--navy);color:#fff}
+.ps-sw{width:16px;height:16px;border-radius:50%;display:inline-block;vertical-align:-3px;margin-right:6px;border:1px solid var(--line)}
+.ps-f{display:grid;gap:5px;margin-bottom:12px;font-weight:600;font-size:.86rem}
+.ps-f small{font-weight:400;color:var(--mute)}
+.ps-f input,.ps-f textarea,#ps-cap{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%}
+.ps-f textarea{min-height:108px;resize:vertical}
+#ps-cap{min-height:160px;font-size:.86rem}
+.ps-box{border:1px dashed var(--line);border-radius:10px;padding:12px;margin-bottom:16px}
+.ps-stage{position:sticky;top:90px;display:grid;gap:12px}
+#ps-cv{width:100%;height:auto;border-radius:12px;display:block;box-shadow:var(--sh)}
+.ps-acts{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+#ps-msg{font-size:.86rem;color:#1E8E5A;min-height:1.3em;margin:0}
+.ps-chk{display:flex;gap:8px;align-items:center;font-weight:600;font-size:.86rem}
+</style></head><body><a class="skip" href="#main">Skip to content</a><div id="hdr"></div><main id="main" tabindex="-1">
+<div class="ps-gatebox" id="ps-gate"><p class="mute">Loading…</p></div>
+<div class="ps-wrap" id="ps-app" hidden>
+  <div class="ps-head"><h1>Post Studio</h1><p class="mute" style="margin:0">Team only. Pick an idea, check the text, save the picture.</p></div>
+  <div class="ps-panel">
+    <div class="ps-head" style="margin-bottom:12px"><p class="ps-step" style="margin:0">Today's ideas · <span id="ps-today"></span></p><button type="button" class="btn out" id="ps-more">Show me other ideas</button></div>
+    <div class="ps-grid" id="ps-ideas"></div>
+    <p class="mute" style="margin:12px 0 0;font-size:.84rem">Ideas come from your live scholarships, seminars, pilots and materials. Always check dates on the official page before you post.</p>
+  </div>
+  <div class="ps-desk" id="ps-edit">
+    <div class="ps-panel">
+      <p class="ps-step">Design</p>
+      <div class="ps-grid ps-gal" id="ps-gal"></div>
+      <p class="ps-step">Shape, colour and background</p>
+      <div class="ps-row"><div class="ps-seg" id="ps-size" role="group" aria-label="Shape"><button type="button" data-v="pt">Portrait 4:5</button><button type="button" data-v="sq">Square</button></div>
+        <button type="button" class="btn out" id="ps-look">Surprise me</button>
+        <label class="ps-chk"><input type="checkbox" id="ps-stamp" checked> Show “Not an agency”</label></div>
+      <div class="ps-row"><div class="ps-seg" id="ps-theme" role="group" aria-label="Colour"></div></div>
+      <div class="ps-row"><div class="ps-seg" id="ps-bg" role="group" aria-label="Background"></div></div>
+      <p class="ps-step">Text</p>
+      <div class="ps-box" id="ps-pbox" hidden><label class="ps-f" for="ps-pfile">Pilot photo <small>Optional. Use only a photo the pilot allowed you to post.</small></label><input type="file" id="ps-pfile" accept="image/*"></div>
+      <form id="ps-form" autocomplete="off"></form>
+    </div>
+    <div class="ps-stage">
+      <canvas id="ps-cv" width="1080" height="1350" aria-label="Poster preview"></canvas>
+      <div class="ps-acts"><button type="button" class="btn" id="ps-save">Save picture</button><button type="button" class="btn out" id="ps-copy">Copy caption</button></div>
+      <p id="ps-msg" role="status"></p>
+      <label class="ps-f" for="ps-cap">Caption for Facebook <small>Written from your text. Edit it before you post.</small></label>
+      <textarea id="ps-cap"></textarea>
+    </div>
+  </div>
+</div>
+</main><div id="ftr"></div><noscript><p class="w">Please enable JavaScript to use this page.</p></noscript>
+<script src="config.js?v=946a25d5"></script><script src="accounts.js?v=946a25d5"></script><script src="data/base.js?v=946a25d5"></script><script src="data/static-ids.js?v=946a25d5"></script><script src="assets/site.js?v=946a25d5"></script>
+<script src="assets/pg-studio.js?v=946a25d5"></script></body></html>
